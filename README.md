@@ -42,6 +42,33 @@ ep-sampler build
 The result is `out/project-01.ppak`. In the EP Sample Tool use **Load** /
 **Upload** and point it at that file.
 
+## Interactive menu
+
+Run `ep-sampler` with no arguments and it walks you through two questions:
+
+```text
+$ ep-sampler
+
+Which EP device should we build a backup for?
+  [1] EP-40 Riddim (default)
+  [2] EP-133
+  [3] EP-1320
+> 
+
+What do you want to build?
+  [1] My manifest (manifest.txt) (default)
+  [2] Factory sample folders
+>
+```
+
+- The device defaults to the **EP-40 Riddim** (press Enter).
+- "My manifest" builds `manifest.txt` for the chosen device.
+- "Factory sample folders" builds the chosen device's factory set — the EP-40
+  has no bundled factory set, so picking it re-asks for EP-133 or EP-1320.
+
+The same flows run **non-interactively** via the subcommands below, so they can
+be scripted (startup arguments instead of a menu).
+
 ## Commands
 
 | Command | What it does |

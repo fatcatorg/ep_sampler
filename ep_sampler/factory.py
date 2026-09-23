@@ -16,8 +16,15 @@ from pathlib import Path
 AUDIO_EXTS = (".wav", ".aif", ".aiff", ".mp3", ".flac", ".ogg", ".m4a")
 
 # Device identity used in the .ppak meta.json. The hardware SKU is shared
-# across the TE032 family; device_version reflects the running OS.
+# across the TE032 family; device_version reflects the running OS. The EP-40
+# Riddim ships the 128 MiB board (TE032AS002). These are sensible defaults -
+# verify against a real Sample Tool backup of your own unit (`inspect`).
 DEVICES = {
+    "ep40": {
+        "device_name": "EP-40",
+        "device_sku": "TE032AS002",
+        "base_sku": "TE032AS001",
+    },
     "ep133": {
         "device_name": "EP-133",
         "device_sku": "TE032AS001",
@@ -30,6 +37,17 @@ DEVICES = {
     },
 }
 
+# Only these devices ship a factory sample set in this tool.
+FACTORY_DEVICES = ("ep133", "ep1320")
+
+# Menu labels, in menu order (EP-40 first so it is the default).
+DEVICE_LABELS = {
+    "ep40": "EP-40 Riddim",
+    "ep133": "EP-133",
+    "ep1320": "EP-1320",
+}
+DEVICE_ORDER = ("ep40", "ep133", "ep1320")
+
 
 @dataclass
 class FactorySound:
@@ -38,13 +56,17 @@ class FactorySound:
 
 
 def normalize_device(device: str) -> str:
-    """Normalise 'ep-133' / '133' / 'EP133' -> 'ep133'."""
+    """Normalise 'ep-40' / 'riddim' / '133' / 'EP1320' -> 'ep40' etc."""
     d = device.strip().lower().replace("-", "").replace("_", "")
-    aliases = {"ep133": "ep133", "133": "ep133", "ko2": "ep133",
-               "ep1320": "ep1320", "1320": "ep1320", "medieval": "ep1320"}
+    aliases = {
+        "ep40": "ep40", "40": "ep40", "riddim": "ep40",
+        "ep133": "ep133", "133": "ep133", "ko2": "ep133",
+        "ep1320": "ep1320", "1320": "ep1320", "medieval": "ep1320",
+    }
     d = aliases.get(d, d)
     if d not in DEVICES:
-        raise ValueError(f"unknown device {device!r}; use 'ep133' or 'ep1320'")
+        raise ValueError(
+            f"unknown device {device!r}; use 'ep40', 'ep133' or 'ep1320'")
     return d
 
 
@@ -52,8 +74,16 @@ def device_meta(device: str) -> dict:
     return dict(DEVICES[normalize_device(device)])
 
 
+def device_label(device: str) -> str:
+    return DEVICE_LABELS[normalize_device(device)]
+
+
 def load_factory(device: str) -> list[FactorySound]:
     d = normalize_device(device)
+    if d not in FACTORY_DEVICES:
+        raise ValueError(
+            f"no factory sample set is bundled for {device_label(d)}; "
+            f"factory builds are available for EP-133 and EP-1320")
     path = Path(__file__).parent / "data" / f"factory_{d}.txt"
     sounds: list[FactorySound] = []
     with open(path, "r", encoding="utf-8") as fh:

@@ -17,7 +17,8 @@ from pathlib import Path
 
 from . import __version__
 from .audio import convert_wav
-from .factory import device_meta, find_samples, normalize_device
+from .factory import (DEVICE_LABELS, DEVICE_ORDER, device_label, device_meta,
+                      find_samples, normalize_device)
 from .manifest import Sample, parse_manifest
 from .pad_record import DEFAULT_BLANK_PAD, PAD_RECORD_SIZE
 from .pak import build
@@ -308,6 +309,85 @@ def _print_pads(tar_bytes: bytes) -> None:
 
 
 # --------------------------------------------------------------------------
+# interactive menu
+# --------------------------------------------------------------------------
+
+def _prompt_choice(prompt: str, keys: list[str], labels: list[str],
+                   default: str) -> str:
+    """Prompt for one of `keys`, returning the chosen key (default on Enter)."""
+    print(f"\n{prompt}")
+    for i, (key, label) in enumerate(zip(keys, labels), 1):
+        marker = " (default)" if key == default else ""
+        print(f"  [{i}] {label}{marker}")
+    while True:
+        try:
+            ans = input("> ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            raise
+        if ans == "":
+            return default
+        if ans in keys:
+            return ans
+        if ans.isdigit() and 1 <= int(ans) <= len(keys):
+            return keys[int(ans) - 1]
+        for key, label in zip(keys, labels):
+            if ans == label.lower() or label.lower().startswith(ans):
+                return key
+        print(f"  choose a number or one of: {', '.join(keys)}")
+
+
+def cmd_menu(args: argparse.Namespace) -> int:
+    """Interactive prompt-and-build flow (used when no subcommand is given)."""
+    print(f"ep-sampler {__version__}")
+
+    try:
+        device = _prompt_choice(
+            "Which EP device should we build a backup for?",
+            list(DEVICE_ORDER), [DEVICE_LABELS[d] for d in DEVICE_ORDER],
+            default="ep40")
+
+        source = _prompt_choice(
+            "What do you want to build?",
+            ["manifest", "factory"],
+            ["My manifest (manifest.txt)", "Factory sample folders"],
+            default="manifest")
+    except (EOFError, KeyboardInterrupt):
+        print("\nno input - use a subcommand for non-interactive runs "
+              "(e.g. 'ep-sampler build', 'ep-sampler build-factory ep133')")
+        return 1
+
+    if source == "factory":
+        # EP-40 has no bundled factory set; constrain to the two that do.
+        while device not in ("ep133", "ep1320"):
+            print(f"\n{device_label(device)} has no factory sample set here.")
+            try:
+                device = _prompt_choice(
+                    "Which factory sample set?",
+                    ["ep133", "ep1320"],
+                    [DEVICE_LABELS["ep133"], DEVICE_LABELS["ep1320"]],
+                    default="ep133")
+            except (EOFError, KeyboardInterrupt):
+                print()
+                return 1
+        ns = argparse.Namespace(
+            config=args.config, device=device, out_dir=None, out=None,
+            project=None, device_version=None, audio_tool=None,
+            ffmpeg_bin=None, sox_bin=None, strict=False)
+        return cmd_build_factory(ns)
+
+    # manifest source - set the target device identity for the build
+    meta = device_meta(device)
+    ns = argparse.Namespace(
+        config=args.config, samples_dir=None, manifest_file=None, out_dir=None,
+        project=None, mode=None, base_pak=None, device_name=meta["device_name"],
+        device_sku=meta["device_sku"], base_sku=meta["base_sku"],
+        device_version=None, pak_release=None, pak_type=None, author=None,
+        audio_tool=None, ffmpeg_bin=None, sox_bin=None)
+    return cmd_build(ns)
+
+
+# --------------------------------------------------------------------------
 # argparse
 # --------------------------------------------------------------------------
 
@@ -320,7 +400,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--config", type=Path, default=None,
                    help="path to config.json (default: ./config.json)")
 
-    sub = p.add_subparsers(dest="command", required=True)
+    sub = p.add_subparsers(dest="command", required=False)
 
     b = sub.add_parser("build", help="convert samples and build the .ppak")
     b.add_argument("--samples-dir", default=None)
@@ -378,6 +458,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
+        if args.command is None:
+            return cmd_menu(args)
         return args.func(args)
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)

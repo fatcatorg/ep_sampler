@@ -49,9 +49,12 @@ def build_meta(cfg: dict) -> bytes:
 
 
 def _records_for(samples: list[Sample], sounds_dir: Path) -> dict[tuple[str, int], bytes]:
-    """Return {(group, pad): 26-byte record} for every assigned pad."""
+    """Return {(group, pad): 26-byte record} for every sample with a pad
+    binding. Samples without a pad (e.g. factory sounds) are skipped."""
     records: dict[tuple[str, int], bytes] = {}
     for s in samples:
+        if s.group is None or s.pad is None:
+            continue
         frames = _wav_frames(sounds_dir / s.wav_name)
         records[(s.group, s.pad)] = build_pad_record(
             s.slot, frames, s.bpm, s.bpm_override, s.time_mode, s.playmode)
@@ -198,5 +201,6 @@ def build(cfg: dict, samples: list[Sample], sounds_dir: Path) -> dict[str, objec
         "out": cfg["out"],
         "project": cfg["project"],
         "samples": len(samples),
-        "pads": sorted(f"{s.group.upper()}-{s.pad}" for s in samples),
+        "pads": sorted(f"{s.group.upper()}-{s.pad}"
+                      for s in samples if s.group is not None and s.pad is not None),
     }

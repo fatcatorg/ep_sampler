@@ -1,5 +1,7 @@
 {
   "samples_dir": "samples",
+  "ep133_samples_dir": "",
+  "ep1320_samples_dir": "",
   "manifest_file": "manifest.txt",
   "out_dir": "out",
   "project": 1,

@@ -14,3 +14,6 @@ ep-sampler = "ep_sampler.cli:main"
 
 [tool.setuptools]
 packages = ["ep_sampler"]
+
+[tool.setuptools.package-data]
+ep_sampler = ["data/*.txt"]

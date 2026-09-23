@@ -17,14 +17,14 @@ TIME_MODES = {"off", "bpm", "bar"}
 @dataclass
 class Sample:
     slot: int
-    group: str          # lowercase "a".."d"
-    pad: int            # 1..12, TAR "pNN" convention (bottom-up)
-    bpm: float | None
-    bpm_override: bool
-    time_mode: str
-    playmode: str
-    name: str
-    src: Path           # absolute path to the source WAV
+    group: str | None = None     # lowercase "a".."d"; None = no pad binding
+    pad: int | None = None       # 1..12, TAR "pNN" convention (bottom-up)
+    bpm: float | None = None
+    bpm_override: bool = False
+    time_mode: str = "off"
+    playmode: str = "oneshot"
+    name: str = ""
+    src: Path | None = None      # absolute path to the source WAV
 
     @property
     def wav_name(self) -> str:

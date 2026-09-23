@@ -47,6 +47,7 @@ The result is `out/project-01.ppak`. In the EP Sample Tool use **Load** /
 | Command | What it does |
 | --- | --- |
 | `ep-sampler build` | Convert every sample and build the `.ppak`. |
+| `ep-sampler build-factory ep133` | Build a `.ppak` from the EP-133 factory sample set. |
 | `ep-sampler add samples/kick.wav` | Append one sample to `manifest.txt` (auto slot/pad/name). |
 | `ep-sampler inspect out/project-01.ppak` | List a built `.ppak`'s metadata, sounds and pad bindings. |
 
@@ -57,6 +58,37 @@ ep-sampler add samples/snare.wav --slot 102 --group B --pad 4 --bpm 134 --time-m
 # build with overrides (or edit config.json)
 ep-sampler build --project 2 --mode scratch --out-dir out
 ```
+
+## Factory backups
+
+`build-factory` rebuilds the device's **factory sound set** from your own
+copies of the samples. It knows the factory slot for every sample on the
+EP-133 (308 samples) and the EP-1320 (220 samples), and writes each into its
+original slot with the correct device identity in `meta.json`.
+
+```bash
+ep-sampler build-factory ep133
+ep-sampler build-factory ep1320
+```
+
+It looks for each factory sample **by name** (case-insensitive, ignoring
+spaces/punctuation) anywhere under the configured folders — including
+sub-folders — so a sample named `BATTLE KIK` matches
+`some/where/battle_kik.wav`. Search order:
+
+1. the device's own folder (`ep133_samples_dir` / `ep1320_samples_dir`)
+2. the main folder (`samples_dir`)
+
+Every sample that can't be found is listed, and the build continues with the
+rest. Pass `--strict` to abort instead when anything is missing:
+
+```bash
+ep-sampler build-factory ep1320 --strict
+```
+
+Factory builds use a **blank project** — they restore the sample library into
+the factory slots but do not reproduce the factory demo patterns (those are
+sequencer data, not part of the known `.ppak` sound format).
 
 ## Manifest format
 
@@ -99,7 +131,9 @@ built-in defaults). Every key can also be overridden on the command line.
 
 | Key | Meaning |
 | --- | --- |
-| `samples_dir` | Folder holding the input sample WAVs. |
+| `samples_dir` | Main folder of input sample WAVs. |
+| `ep133_samples_dir` | Folder holding the EP-133 default/factory samples. |
+| `ep1320_samples_dir` | Folder holding the EP-1320 default/factory samples. |
 | `manifest_file` | The sample list. |
 | `out_dir` | Where the `.ppak` and intermediate files go. |
 | `project` | Which project (1..99) the backup carries. |
@@ -161,6 +195,11 @@ fails with `ERR SYSTEM_MODEL`.
 - Two pad-numbering conventions exist on the device (top-down SysEx vs
   bottom-up TAR). This project uses the **TAR** convention throughout the
   manifest and files; the mapping table above is the safe reference.
+- The factory sample name/slot lists (`ep_sampler/data/*.txt`) are name lists
+  only — no audio is bundled. They come from community documentation:
+  [`codejunkee1/ep133-sounds`](https://github.com/codejunkee1/ep133-sounds)
+  for the EP-133 and [`jpopesculian/ep1320`](https://github.com/jpopesculian/ep1320)
+  for the EP-1320.
 
 ## Creating a GitHub repo
 

@@ -2,9 +2,10 @@
 """Command-line interface for ep_sampler.
 
 Commands:
-    build    convert the manifest's samples and build the .ppak
-    add      append one sample to the manifest
-    inspect  list the contents of a built .ppak
+    build          convert the manifest's samples and build the .ppak
+    build-factory  build a .ppak from the EP-133 / EP-1320 factory sample set
+    add            append one sample to the manifest
+    inspect        list the contents of a built .ppak
 """
 
 import argparse
@@ -16,12 +17,15 @@ from pathlib import Path
 
 from . import __version__
 from .audio import convert_wav
-from .manifest import parse_manifest
+from .factory import device_meta, find_samples, normalize_device
+from .manifest import Sample, parse_manifest
 from .pad_record import DEFAULT_BLANK_PAD, PAD_RECORD_SIZE
 from .pak import build
 
 DEFAULTS = {
     "samples_dir": "samples",
+    "ep133_samples_dir": "",
+    "ep1320_samples_dir": "",
     "manifest_file": "manifest.txt",
     "out_dir": "out",
     "build_dir": "build",
@@ -89,6 +93,23 @@ def cmd_build(args: argparse.Namespace) -> int:
 
     samples = parse_manifest(manifest_path, samples_dir)
 
+    if not _convert_samples(samples, sounds_dir, cfg):
+        return 1
+
+    out_name = cfg["pak_file_name"].replace(
+        "__PROJECT__", f"{cfg['project']:02d}")
+    cfg["out"] = str(out_dir / out_name)
+
+    summary = build(cfg, samples, sounds_dir)
+    print(f"built {summary['out']}")
+    print(f"  project P{summary['project']:02d}  samples {summary['samples']}")
+    if summary["pads"]:
+        print("  pads " + ", ".join(summary["pads"]))
+    return 0
+
+
+def _convert_samples(samples: list[Sample], sounds_dir: Path, cfg: dict) -> bool:
+    """Convert each sample to the .ppak format. Returns False on any error."""
     tool = cfg["audio_tool"]
     if tool == "sox":
         extra = cfg.get("sox_extra_args") or []
@@ -98,27 +119,81 @@ def cmd_build(args: argparse.Namespace) -> int:
         if not s.src.is_file():
             print(f"sample file not found: {s.src} (slot {s.slot})",
                   file=sys.stderr)
-            return 1
+            return False
         dst = sounds_dir / s.wav_name
         if _needs_conversion(s.src, dst):
             print(f"converting {s.src.name} -> {s.wav_name}")
             convert_wav(s.src, dst, tool=tool,
                         ffmpeg_bin=cfg["ffmpeg_bin"], sox_bin=cfg["sox_bin"],
                         extra_args=extra)
-
-    out_name = cfg["pak_file_name"].replace(
-        "__PROJECT__", f"{cfg['project']:02d}")
-    cfg["out"] = str(out_dir / out_name)
-
-    summary = build(cfg, samples, sounds_dir)
-    print(f"built {summary['out']}")
-    print(f"  project P{summary['project']:02d}  samples {summary['samples']}")
-    print("  pads " + ", ".join(summary["pads"]))
-    return 0
+    return True
 
 
 def _needs_conversion(src: Path, dst: Path) -> bool:
     return not dst.is_file() or src.stat().st_mtime > dst.stat().st_mtime
+
+
+# --------------------------------------------------------------------------
+# build-factory
+# --------------------------------------------------------------------------
+
+def cmd_build_factory(args: argparse.Namespace) -> int:
+    device = normalize_device(args.device)
+    cfg = load_config(args.config)
+
+    meta = device_meta(device)
+    cfg["device_name"] = meta["device_name"]
+    cfg["device_sku"] = meta["device_sku"]
+    cfg["base_sku"] = meta["base_sku"]
+    _merge(cfg, args, "out_dir", "project", "device_version", "audio_tool",
+           "ffmpeg_bin", "sox_bin")
+
+    out_dir = Path(cfg["out_dir"]).expanduser()
+    sounds_dir = out_dir / cfg["build_dir"] / "sounds"
+
+    # Search dirs in order: the device's own default folder, then the main one.
+    dirs: list[Path] = []
+    for key in (f"{device}_samples_dir", "samples_dir"):
+        val = cfg.get(key)
+        if val:
+            p = Path(str(val)).expanduser()
+            if p.is_dir():
+                dirs.append(p)
+
+    found, missing = find_samples(device, dirs)
+    total = len(found) + len(missing)
+    if missing:
+        print(f"missing {len(missing)}/{total} factory samples:")
+        for s in missing:
+            print(f"  slot {s.slot:3d}  {s.name}")
+        sys.stdout.flush()
+    if not found:
+        print("no factory samples found - check your sample folder paths "
+              "(ep133_samples_dir / ep1320_samples_dir / samples_dir)",
+              file=sys.stderr)
+        return 1
+    if missing and args.strict:
+        print("aborting: --strict and samples are missing", file=sys.stderr)
+        return 1
+
+    samples = [Sample(slot=s.slot, name=s.name, src=path)
+               for s, path in found]
+
+    if not _convert_samples(samples, sounds_dir, cfg):
+        return 1
+
+    out = Path(args.out).expanduser() if args.out else \
+        out_dir / f"{device}-factory.ppak"
+    cfg["out"] = str(out)
+    cfg["mode"] = "scratch"
+
+    summary = build(cfg, samples, sounds_dir)
+    print(f"built {summary['out']}")
+    print(f"  device {meta['device_name']}  project P{summary['project']:02d}  "
+          f"samples {summary['samples']}")
+    if missing:
+        print(f"  {len(missing)} factory samples not found and skipped")
+    return 0
 
 
 # --------------------------------------------------------------------------
@@ -265,6 +340,22 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--ffmpeg-bin", default=None)
     b.add_argument("--sox-bin", default=None)
     b.set_defaults(func=cmd_build)
+
+    f = sub.add_parser(
+        "build-factory",
+        help="build a .ppak from a device's factory sample set")
+    f.add_argument("device", help="ep133 or ep1320")
+    f.add_argument("--out-dir", default=None)
+    f.add_argument("--out", default=None,
+                   help="full output path (overrides the default file name)")
+    f.add_argument("--project", type=int, default=None)
+    f.add_argument("--device-version", default=None)
+    f.add_argument("--audio-tool", choices=["ffmpeg", "sox"], default=None)
+    f.add_argument("--ffmpeg-bin", default=None)
+    f.add_argument("--sox-bin", default=None)
+    f.add_argument("--strict", action="store_true",
+                   help="fail if any factory sample is missing")
+    f.set_defaults(func=cmd_build_factory)
 
     a = sub.add_parser("add", help="append one sample to the manifest")
     a.add_argument("file")

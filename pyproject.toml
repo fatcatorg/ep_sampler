@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ep-sampler"
+version = "0.1.0"
+description = "Build a list of sample WAV files into an EP-133 K.O. II .ppak backup file."
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+[project.scripts]
+ep-sampler = "ep_sampler.cli:main"
+
+[tool.setuptools]
+packages = ["ep_sampler"]

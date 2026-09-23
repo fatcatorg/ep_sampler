@@ -1,0 +1,2 @@
+100	A	10	120	off	oneshot	Kick	kick.wav
+101	A	11	134	bpm	oneshot	Snare	snare.wav

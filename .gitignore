@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# build output
+out/
+build/
+dist/
+
+# input sample audio (keep the folder, ignore the audio files)
+samples/*.wav
+samples/*.WAV
+samples/*.mp3
+samples/*.flac
+samples/*.aif
+samples/*.aiff
+samples/*.ogg

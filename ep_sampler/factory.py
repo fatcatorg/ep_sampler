@@ -35,6 +35,13 @@ DEVICES = {
         "device_sku": "TE032AS001",
         "base_sku": "TE032AS001",
     },
+    # The Ting is an FX microphone, not a sampler - it has no .ppak / SKU, so
+    # these fields are placeholders. It is handled by the ting config builder.
+    "ep2350": {
+        "device_name": "EP-2350",
+        "device_sku": "EP-2350",
+        "base_sku": "EP-2350",
+    },
 }
 
 # Only these devices ship a factory sample set in this tool.
@@ -45,8 +52,9 @@ DEVICE_LABELS = {
     "ep40": "EP-40 Riddim",
     "ep133": "EP-133",
     "ep1320": "EP-1320",
+    "ep2350": "EP-2350 Ting",
 }
-DEVICE_ORDER = ("ep40", "ep133", "ep1320")
+DEVICE_ORDER = ("ep40", "ep133", "ep1320", "ep2350")
 
 
 @dataclass
@@ -62,11 +70,13 @@ def normalize_device(device: str) -> str:
         "ep40": "ep40", "40": "ep40", "riddim": "ep40",
         "ep133": "ep133", "133": "ep133", "ko2": "ep133",
         "ep1320": "ep1320", "1320": "ep1320", "medieval": "ep1320",
+        "ep2350": "ep2350", "2350": "ep2350", "ting": "ep2350",
     }
     d = aliases.get(d, d)
     if d not in DEVICES:
         raise ValueError(
-            f"unknown device {device!r}; use 'ep40', 'ep133' or 'ep1320'")
+            f"unknown device {device!r}; use 'ep40', 'ep133', 'ep1320' "
+            f"or 'ep2350'")
     return d
 
 

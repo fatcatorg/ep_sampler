@@ -4,6 +4,7 @@
 Commands:
     build          convert the manifest's samples and build the .ppak
     build-factory  build a .ppak from the EP-133 / EP-1320 factory sample set
+    ting           build an EP-2350 Ting config.json (FX mic)
     add            append one sample to the manifest
     inspect        list the contents of a built .ppak
 """
@@ -22,6 +23,7 @@ from .factory import (DEVICE_LABELS, DEVICE_ORDER, device_label, device_meta,
 from .manifest import Sample, parse_manifest
 from .pad_record import DEFAULT_BLANK_PAD, PAD_RECORD_SIZE
 from .pak import build
+from .ting import (default_config, random_config, sample_entries, write_config)
 
 DEFAULTS = {
     "samples_dir": "samples",
@@ -347,6 +349,14 @@ def cmd_menu(args: argparse.Namespace) -> int:
             list(DEVICE_ORDER), [DEVICE_LABELS[d] for d in DEVICE_ORDER],
             default="ep40")
 
+        # The Ting is an FX mic - it takes a config.json, not a .ppak.
+        if device == "ep2350":
+            rnd = _prompt_yesno("Randomise the FX presets?", default="n")
+            ns = argparse.Namespace(
+                config=args.config, name=None, randomize=(rnd == "y"),
+                seed=None, samples=False, out=None)
+            return cmd_ting(ns)
+
         source = _prompt_choice(
             "What do you want to build?",
             ["manifest", "factory"],
@@ -385,6 +395,54 @@ def cmd_menu(args: argparse.Namespace) -> int:
         device_version=None, pak_release=None, pak_type=None, author=None,
         audio_tool=None, ffmpeg_bin=None, sox_bin=None)
     return cmd_build(ns)
+
+
+def _prompt_yesno(prompt: str, default: str = "n") -> str:
+    while True:
+        try:
+            ans = input(f"\n{prompt} [y/N] ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            raise
+        if ans == "":
+            return default
+        if ans in ("y", "yes"):
+            return "y"
+        if ans in ("n", "no"):
+            return "n"
+        print("  answer y or n")
+
+
+# --------------------------------------------------------------------------
+# ting (EP-2350 FX mic config.json)
+# --------------------------------------------------------------------------
+
+def cmd_ting(args: argparse.Namespace) -> int:
+    cfg = load_config(args.config)
+    out_dir = Path(cfg["out_dir"]).expanduser()
+    out = Path(args.out).expanduser() if args.out else \
+        out_dir / "ting" / "config.json"
+    name = args.name or "TING PACK"
+
+    if args.randomize:
+        data = random_config(name, seed=args.seed, crazy=True)
+    else:
+        data = default_config(name)
+    if args.samples:
+        data["samples"] = sample_entries()
+
+    write_config(data, out)
+    print(f"built {out}")
+    print(f"  presets {len(data['presets'])} "
+          f"({'randomised' if args.randomize else 'factory-style'})")
+    if "samples" in data:
+        print(f"  samples {len(data['samples'])} (1.wav..4.wav, oneshot)")
+    for p in data["presets"]:
+        chain = " -> ".join(e["effect"] for e in p["list"])
+        mods = [m for m in ("handle", "shake", "lfo", "trigger") if m in p]
+        suffix = f"  [{' '.join(mods)}]" if mods else ""
+        print(f"  slot {p['pos']}: {chain}{suffix}")
+    return 0
 
 
 # --------------------------------------------------------------------------
@@ -451,6 +509,19 @@ def build_parser() -> argparse.ArgumentParser:
     i = sub.add_parser("inspect", help="list the contents of a .ppak")
     i.add_argument("file")
     i.set_defaults(func=cmd_inspect)
+
+    t = sub.add_parser(
+        "ting", help="build an EP-2350 Ting config.json (FX mic)")
+    t.add_argument("--name", default=None, help="pack name (default: TING PACK)")
+    t.add_argument("--randomize", action="store_true",
+                   help="randomise the FX chains and parameters")
+    t.add_argument("--seed", type=int, default=None,
+                   help="random seed for reproducible randomisation")
+    t.add_argument("--samples", action="store_true",
+                   help="include a samples section (1.wav..4.wav, oneshot)")
+    t.add_argument("--out", default=None,
+                   help="output path (default: out/ting/config.json)")
+    t.set_defaults(func=cmd_ting)
 
     return p
 

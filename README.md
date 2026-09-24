@@ -5,7 +5,9 @@ that the official Teenage Engineering **EP Sample Tool** can restore onto an
 **EP-133 K.O. II** (and, via `device_sku`, the EP-1320 / EP-40). Point it at a
 folder of samples, describe where they go in `manifest.txt`, and it produces
 the exact file you would otherwise get from the tool's "Backup" button — only
-built from *your* samples.
+built from *your* samples. It also generates `config.json` effect presets for
+the **EP-2350 Ting** FX microphone — including a randomizer to go wild with the
+four FX buttons.
 
 ## Pipeline
 
@@ -53,6 +55,7 @@ Which EP device should we build a backup for?
   [1] EP-40 Riddim (default)
   [2] EP-133
   [3] EP-1320
+  [4] EP-2350 Ting
 > 
 
 What do you want to build?
@@ -65,6 +68,8 @@ What do you want to build?
 - "My manifest" builds `manifest.txt` for the chosen device.
 - "Factory sample folders" builds the chosen device's factory set — the EP-40
   has no bundled factory set, so picking it re-asks for EP-133 or EP-1320.
+- Picking **EP-2350 Ting** skips straight to its FX-config builder and asks
+  whether to randomise the presets.
 
 The same flows run **non-interactively** via the subcommands below, so they can
 be scripted (startup arguments instead of a menu).
@@ -75,6 +80,7 @@ be scripted (startup arguments instead of a menu).
 | --- | --- |
 | `ep-sampler build` | Convert every sample and build the `.ppak`. |
 | `ep-sampler build-factory ep133` | Build a `.ppak` from the EP-133 factory sample set. |
+| `ep-sampler ting` | Build an EP-2350 Ting `config.json` (FX mic). |
 | `ep-sampler add samples/kick.wav` | Append one sample to `manifest.txt` (auto slot/pad/name). |
 | `ep-sampler inspect out/project-01.ppak` | List a built `.ppak`'s metadata, sounds and pad bindings. |
 
@@ -116,6 +122,27 @@ ep-sampler build-factory ep1320 --strict
 Factory builds use a **blank project** — they restore the sample library into
 the factory slots but do not reproduce the factory demo patterns (those are
 sequencer data, not part of the known `.ppak` sound format).
+
+## Ting (EP-2350 FX mic)
+
+The Ting is a standalone handheld FX microphone, not a sampler. It mounts a
+tiny disk and reads a single `config.json` that defines the four FX buttons
+(ECHO, SPRING, PIXIE, ROBOT) as effect chains with optional handle / shake /
+lfo / trigger modulation, plus up to four sample triggers.
+
+```bash
+ep-sampler ting                       # factory-style presets (ECHO/SPRING/PIXIE/ROBOT)
+ep-sampler ting --randomize           # random FX chains and parameters
+ep-sampler ting --randomize --seed 7  # reproducible randomisation
+ep-sampler ting --samples             # include a samples section (1.wav..4.wav)
+```
+
+The randomizer picks effects from all ten documented effects (`BALANCE`,
+`DELAY`, `DIST`, `HARMONY`, `LOWPASS`, `HIGHPASS`, `SAMPLE`, `REVERB`, `RING`,
+`SSB`), randomises each parameter inside its documented range, and wires up
+random `handle` / `shake` / `lfo` / `trigger` modulation — "go crazy". Output
+goes to `out/ting/config.json` (override with `--out`); copy it onto the
+`tingdisk` volume and restart the mic.
 
 ## Manifest format
 

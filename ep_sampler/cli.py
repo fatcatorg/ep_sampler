@@ -23,7 +23,8 @@ from .factory import (DEVICE_LABELS, DEVICE_ORDER, device_label, device_meta,
 from .manifest import Sample, parse_manifest
 from .pad_record import DEFAULT_BLANK_PAD, PAD_RECORD_SIZE
 from .pak import build
-from .ting import (default_config, random_config, sample_entries, write_config)
+from .ting import (FX_TYPES, default_config, sample_entries, typed_config,
+                      write_config)
 
 DEFAULTS = {
     "samples_dir": "samples",
@@ -352,9 +353,13 @@ def cmd_menu(args: argparse.Namespace) -> int:
         # The Ting is an FX mic - it takes a config.json, not a .ppak.
         if device == "ep2350":
             rnd = _prompt_yesno("Randomise the FX presets?", default="n")
+            styles = []
+            if rnd == "y":
+                styles = _prompt_fx_styles()
+            fx = ",".join(str(s + 1) for s in styles) if styles else None
             ns = argparse.Namespace(
                 config=args.config, name=None, randomize=(rnd == "y"),
-                seed=None, samples=False, out=None)
+                fx=fx, seed=None, samples=False, out=None, list_fx=False)
             return cmd_ting(ns)
 
         source = _prompt_choice(
@@ -418,14 +423,20 @@ def _prompt_yesno(prompt: str, default: str = "n") -> str:
 # --------------------------------------------------------------------------
 
 def cmd_ting(args: argparse.Namespace) -> int:
+    if args.list_fx:
+        _print_fx_types()
+        return 0
+
     cfg = load_config(args.config)
     out_dir = Path(cfg["out_dir"]).expanduser()
     out = Path(args.out).expanduser() if args.out else \
         out_dir / "ting" / "config.json"
     name = args.name or "TING PACK"
 
-    if args.randomize:
-        data = random_config(name, seed=args.seed, crazy=True)
+    styles = _parse_fx_styles(args.fx) if args.fx else []
+    typed = bool(styles) or args.randomize
+    if typed:
+        data = typed_config(name, styles=styles, seed=args.seed)
     else:
         data = default_config(name)
     if args.samples:
@@ -434,15 +445,58 @@ def cmd_ting(args: argparse.Namespace) -> int:
     write_config(data, out)
     print(f"built {out}")
     print(f"  presets {len(data['presets'])} "
-          f"({'randomised' if args.randomize else 'factory-style'})")
+          f"({'fx-types' if typed else 'factory-style'})")
     if "samples" in data:
         print(f"  samples {len(data['samples'])} (1.wav..4.wav, oneshot)")
     for p in data["presets"]:
         chain = " -> ".join(e["effect"] for e in p["list"])
         mods = [m for m in ("handle", "shake", "lfo", "trigger") if m in p]
         suffix = f"  [{' '.join(mods)}]" if mods else ""
-        print(f"  slot {p['pos']}: {chain}{suffix}")
+        print(f"  slot {p['pos']}: {p.get('name', '')}  {chain}{suffix}")
     return 0
+
+
+def _parse_fx_styles(spec: str) -> list[int]:
+    """Parse '1,3,5,7' into 0-based type indices; validate 1..8."""
+    styles: list[int] = []
+    for part in spec.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            n = int(part)
+        except ValueError:
+            raise ValueError(f"invalid FX style {part!r} (use numbers 1-8)")
+        if not 1 <= n <= len(FX_TYPES):
+            raise ValueError(f"FX style {n} out of range 1..{len(FX_TYPES)}")
+        if n - 1 in styles:
+            raise ValueError(f"duplicate FX style {n}")
+        styles.append(n - 1)
+    return styles
+
+
+def _print_fx_types() -> None:
+    print("FX styles:")
+    for i, t in enumerate(FX_TYPES, 1):
+        print(f"  [{i}] {t['name']:<8} {t['essence']}")
+
+
+def _prompt_fx_styles() -> list[int]:
+    print("\nFX styles (1-8, comma-separated, Enter = random 4):")
+    for i, t in enumerate(FX_TYPES, 1):
+        print(f"  [{i}] {t['name']:<8} {t['essence']}")
+    while True:
+        try:
+            ans = input("> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            raise
+        if ans == "":
+            return []
+        try:
+            return _parse_fx_styles(ans)
+        except ValueError as exc:
+            print(f"  {exc}")
 
 
 # --------------------------------------------------------------------------
@@ -513,8 +567,13 @@ def build_parser() -> argparse.ArgumentParser:
     t = sub.add_parser(
         "ting", help="build an EP-2350 Ting config.json (FX mic)")
     t.add_argument("--name", default=None, help="pack name (default: TING PACK)")
+    t.add_argument("--fx", default=None, metavar="1,2,3,4",
+                   help="FX styles 1-8 to use (comma-separated); remaining "
+                        "slots are filled with random styles")
     t.add_argument("--randomize", action="store_true",
-                   help="randomise the FX chains and parameters")
+                   help="pick 4 random FX styles (or use --fx to choose)")
+    t.add_argument("--list-fx", action="store_true",
+                   help="list the 8 FX styles and exit")
     t.add_argument("--seed", type=int, default=None,
                    help="random seed for reproducible randomisation")
     t.add_argument("--samples", action="store_true",

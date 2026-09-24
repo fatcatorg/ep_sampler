@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""EP-2350 Ting (FX microphone) config.json builder and randomizer.
+"""EP-2350 Ting (FX microphone) config.json builder and FX "types".
 
 The Ting is a standalone handheld FX mic. It mounts a tiny writable disk and
-reads a single `config.json` that defines up to 4 effect presets (the four
-"FX" buttons: ECHO, SPRING, PIXIE, ROBOT) plus optional sample triggers.
+reads a single `config.json` that defines the four FX buttons as effect chains
+plus optional handle / shake / lfo / trigger modulation.
 
 Format (from the official EP-2350 user guide):
 
@@ -20,9 +20,11 @@ Format (from the official EP-2350 user guide):
       ]
     }
 
-This module can also *randomize* the FX: random effect chains, random parameter
-values (kept inside the documented ranges), and random handle/shake/lfo/trigger
-modulation - "go crazy".
+Beyond the four factory presets, this module defines 8 named FX "types" - each
+captures the *essence* of a classic Teenage Engineering instant FX (dub echo,
+spring, pitch-up, ring-mod, drive, wobble, radio, glitch) as a fixed effect
+chain, then randomises every parameter inside that type's own ranges. That
+keeps the character while making every pack different.
 """
 
 import json
@@ -71,12 +73,130 @@ EFFECTS = {
     "SSB": {"frequency": (-20000.0, 20000.0)},
 }
 
-# Effects that process the live microphone voice (excludes SAMPLE, which only
-# plays a stored sample). Factory presets are voice FX.
-VOICE_EFFECTS = [e for e in EFFECTS if e != "SAMPLE"]
-
 LFO_SHAPES = ("sine", "square", "sawtooth", "random")
 PLAYMODES = ("oneshot", "hold", "startstop")
+
+# --------------------------------------------------------------------------
+# 8 FX "types" - essence + recipe
+# --------------------------------------------------------------------------
+# A recipe is a fixed chain structure plus fixed modulation wiring; parameter
+# ranges define the character, and values are random within them.
+
+FX_TYPES = [
+    {
+        "name": "ECHO",
+        "essence": "dub tape echo - repeats, feedback, space",
+        "chain": [
+            ("DELAY", {"time": (0.25, 0.7), "echo": (0.35, 0.8),
+                       "wet-level": (0.35, 0.9), "dry-level": (0.2, 0.6)}),
+        ],
+        "mods": [
+            {"src": "handle", "effect": "DELAY", "param": "time",
+             "depth": (0.2, 0.6)},
+            {"src": "lfo", "effect": "DELAY", "param": "echo",
+             "shape": "sine", "speed": (0.5, 3.0), "depth": (0.05, 0.3)},
+        ],
+    },
+    {
+        "name": "SPRING",
+        "essence": "spring reverb - boingy metallic space",
+        "chain": [
+            ("DELAY", {"time": (0.12, 0.3), "echo": (0.2, 0.4),
+                       "wet-level": (0.25, 0.55)}),
+            ("REVERB", {"time": (0.4, 0.8), "spring-mix": (0.6, 1.0),
+                        "wet-level": (0.5, 0.9), "dry-level": (0.2, 0.5)}),
+        ],
+        "mods": [
+            {"src": "handle", "effect": "REVERB", "param": "time",
+             "depth": (0.2, 0.5)},
+        ],
+    },
+    {
+        "name": "PIXIE",
+        "essence": "pitch-up harmony - chipmunk pixie voice",
+        "chain": [
+            ("HARMONY", {"pitch": (1.3, 2.0), "dry-level": (0.3, 0.7)}),
+            ("REVERB", {"time": (0.15, 0.4), "wet-level": (0.2, 0.5)}),
+        ],
+        "mods": [
+            {"src": "handle", "effect": "HARMONY", "param": "pitch",
+             "depth": (-0.2, 0.2)},
+            {"src": "lfo", "effect": "HARMONY", "param": "pitch",
+             "shape": "sine", "speed": (0.3, 2.0), "depth": (0.02, 0.1)},
+        ],
+    },
+    {
+        "name": "ROBOT",
+        "essence": "ring modulation - metallic robotic voice",
+        "chain": [
+            ("RING", {"frequency": (400.0, 4000.0), "mix": (0.4, 1.0)}),
+            ("DIST", {"amount": (2.0, 15.0), "mix": (0.2, 0.6)}),
+        ],
+        "mods": [
+            {"src": "lfo", "effect": "RING", "param": "frequency",
+             "shape": "square", "speed": (0.5, 4.0), "depth": (0.1, 0.5)},
+        ],
+    },
+    {
+        "name": "GRIT",
+        "essence": "distortion / fuzz - drive and saturation",
+        "chain": [
+            ("DIST", {"amount": (10.0, 40.0), "mix": (0.5, 1.0)}),
+            ("LOWPASS", {"cutoff": (0.3, 0.8)}),
+        ],
+        "mods": [
+            {"src": "handle", "effect": "DIST", "param": "amount",
+             "depth": (4.0, 15.0)},
+            {"src": "shake", "effect": "DIST", "param": "mix",
+             "depth": (0.2, 0.6)},
+        ],
+    },
+    {
+        "name": "WOBBLE",
+        "essence": "filter wobble - tremolo / wub-wub",
+        "chain": [
+            ("LOWPASS", {"cutoff": (0.2, 0.6)}),
+            ("HIGHPASS", {"cutoff": (0.1, 0.4)}),
+        ],
+        "mods": [
+            {"src": "lfo", "effect": "LOWPASS", "param": "cutoff",
+             "shape": "sawtooth", "speed": (1.0, 8.0), "depth": (0.1, 0.5)},
+            {"src": "handle", "effect": "LOWPASS", "param": "cutoff",
+             "depth": (0.2, 0.5)},
+        ],
+    },
+    {
+        "name": "RADIO",
+        "essence": "broken radio - bandpassed lo-fi static",
+        "chain": [
+            ("HIGHPASS", {"cutoff": (0.3, 0.7)}),
+            ("LOWPASS", {"cutoff": (0.2, 0.6)}),
+            ("DIST", {"amount": (3.0, 12.0), "mix": (0.2, 0.5)}),
+            ("SSB", {"frequency": (-300.0, 300.0)}),
+        ],
+        "mods": [
+            {"src": "handle", "effect": "LOWPASS", "param": "cutoff",
+             "depth": (0.3, 0.6)},
+            {"src": "shake", "effect": "SSB", "param": "frequency",
+             "depth": (200.0, 2000.0)},
+        ],
+    },
+    {
+        "name": "GLITCH",
+        "essence": "glitch / stutter - atonal chaos",
+        "chain": [
+            ("SSB", {"frequency": (-12000.0, 12000.0)}),
+            ("RING", {"frequency": (200.0, 6000.0), "mix": (0.3, 0.8)}),
+        ],
+        "mods": [
+            {"src": "shake", "effect": "SSB", "param": "frequency",
+             "depth": (1000.0, 8000.0)},
+            {"src": "lfo", "effect": "RING", "param": "mix",
+             "shape": "random", "speed": (1.0, 10.0), "depth": (0.1, 0.5)},
+            {"src": "trigger", "effect": "RING"},
+        ],
+    },
+]
 
 # Sane defaults approximating the four factory presets.
 DEFAULT_PRESETS = [
@@ -98,63 +218,43 @@ def _rand(rng: random.Random, lo: float, hi: float) -> float:
     return round(rng.uniform(lo, hi), 3)
 
 
-def _random_param(rng: random.Random, effect: str) -> str | None:
-    params = list(EFFECTS[effect])
-    return rng.choice(params) if params else None
+def _row_of(chain: list[dict], effect: str) -> int:
+    for i, e in enumerate(chain):
+        if e["effect"] == effect:
+            return i
+    return 0
 
 
-def random_effect(rng: random.Random, allow_sample: bool = True) -> dict:
-    pool = list(EFFECTS) if allow_sample else VOICE_EFFECTS
-    name = rng.choice(pool)
-    eff: dict = {"effect": name}
-    for param, (lo, hi) in EFFECTS[name].items():
-        if rng.random() < 0.75:
-            eff[param] = _rand(rng, lo, hi)
-    if rng.random() < 0.15:
-        eff["BUS"] = rng.choice((1, 2))
-    return eff
+def build_typed_preset(rng: random.Random, spec: dict, pos: int) -> dict:
+    """Build one preset from an FX-type recipe, randomising values in-range."""
+    chain = []
+    for effect, params in spec["chain"]:
+        row = {"effect": effect}
+        for param, (lo, hi) in params.items():
+            row[param] = _rand(rng, lo, hi)
+        chain.append(row)
 
+    preset: dict = {"pos": pos, "name": spec["name"], "list": chain}
 
-def random_preset(rng: random.Random, pos: int, crazy: bool = True) -> dict:
-    n = rng.randint(1, 5 if crazy else 3)
-    chain = [random_effect(rng) for _ in range(n)]
-    preset: dict = {"pos": pos, "list": chain}
-
-    # handle: continuous control of one parameter
-    if rng.random() < 0.7:
-        row = rng.randrange(len(chain))
-        param = _random_param(rng, chain[row]["effect"])
-        if param:
-            preset["handle"] = {"row": row, "param": param,
-                                "depth": round(rng.uniform(-1.0, 1.0), 3)}
-
-    # shake: momentary glitch
-    if rng.random() < 0.55:
-        row = rng.randrange(len(chain))
-        param = _random_param(rng, chain[row]["effect"])
-        if param:
-            preset["shake"] = {"row": row, "param": param,
-                               "depth": round(rng.uniform(0.2, 1.0), 3)}
-
-    # lfo: automatic cycling (sometimes handle-driven instead)
-    if rng.random() < 0.5:
-        row = rng.randrange(len(chain))
-        param = _random_param(rng, chain[row]["effect"])
-        if param:
-            lfo = {"row": row, "param": param,
-                   "depth": round(rng.uniform(0.05, 0.6), 3),
-                   "shape": rng.choice(LFO_SHAPES),
-                   "speed": round(rng.uniform(0.2, 8.0), 2),
-                   "phase": rng.randint(0, 3)}
-            preset["lfo"] = lfo
-            if rng.random() < 0.3:
-                preset["handle"] = {"target": "lfo", "param": "speed",
-                                    "depth": round(rng.uniform(2.0, 15.0), 2)}
-
-    # trigger: fire a sample from a chain row
-    if rng.random() < 0.4:
-        preset["trigger"] = {"row": rng.randrange(len(chain))}
-
+    for mod in spec.get("mods", []):
+        src = mod["src"]
+        if src == "trigger":
+            preset["trigger"] = {"row": _row_of(chain, mod["effect"])}
+            continue
+        row = _row_of(chain, mod["effect"])
+        param = mod["param"]
+        if src == "lfo":
+            preset["lfo"] = {
+                "row": row, "param": param,
+                "depth": _rand(rng, *mod.get("depth", (0.05, 0.5))),
+                "shape": mod.get("shape", rng.choice(LFO_SHAPES)),
+                "speed": _rand(rng, *mod.get("speed", (0.5, 4.0))),
+                "phase": rng.randint(0, 3),
+            }
+        else:
+            depth_lo, depth_hi = mod.get("depth", (-1.0, 1.0))
+            preset[src] = {"row": row, "param": param,
+                           "depth": _rand(rng, depth_lo, depth_hi)}
     return preset
 
 
@@ -168,16 +268,35 @@ def build_config(name: str, presets: list[dict],
 
 
 def default_config(name: str) -> dict:
-    presets = []
-    for pos, p in enumerate(DEFAULT_PRESETS):
-        presets.append({"pos": pos, **p})
+    presets = [{"pos": pos, **p} for pos, p in enumerate(DEFAULT_PRESETS)]
     return build_config(name, presets)
 
 
-def random_config(name: str, seed: int | None = None,
-                  crazy: bool = True) -> dict:
+def typed_config(name: str, styles: list[int] | None = None,
+                 seed: int | None = None) -> dict:
+    """Four presets drawn from the 8 FX types.
+
+    `styles` is a list of 0-based type indices (length 0..4). Given types are
+    used in order for the first slots; the remaining slots are filled with
+    random, distinct types from the rest of the list.
+    """
     rng = random.Random(seed)
-    presets = [random_preset(rng, pos, crazy=crazy) for pos in range(4)]
+    styles = list(styles or [])
+    if len(styles) > 4:
+        raise ValueError("at most 4 FX styles fit the 4 slots")
+    for i in styles:
+        if not 0 <= i < len(FX_TYPES):
+            raise ValueError(f"FX style {i + 1} out of range 1..8")
+    if len(set(styles)) != len(styles):
+        raise ValueError("duplicate FX style")
+
+    pool = [i for i in range(len(FX_TYPES)) if i not in styles]
+    rng.shuffle(pool)
+    chosen = (styles + pool)[:4]
+
+    presets = []
+    for pos, idx in enumerate(chosen):
+        presets.append(build_typed_preset(rng, FX_TYPES[idx], pos))
     return build_config(name, presets)
 
 

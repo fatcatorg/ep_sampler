@@ -132,16 +132,36 @@ lfo / trigger modulation, plus up to four sample triggers.
 
 ```bash
 ep-sampler ting                       # factory-style presets (ECHO/SPRING/PIXIE/ROBOT)
-ep-sampler ting --randomize           # random FX chains and parameters
-ep-sampler ting --randomize --seed 7  # reproducible randomisation
+ep-sampler ting --randomize           # 4 random FX styles
+ep-sampler ting --fx 1,3,5,7          # pick specific styles; rest filled randomly
+ep-sampler ting --list-fx             # show the 8 styles
 ep-sampler ting --samples             # include a samples section (1.wav..4.wav)
 ```
 
-The randomizer picks effects from all ten documented effects (`BALANCE`,
-`DELAY`, `DIST`, `HARMONY`, `LOWPASS`, `HIGHPASS`, `SAMPLE`, `REVERB`, `RING`,
-`SSB`), randomises each parameter inside its documented range, and wires up
-random `handle` / `shake` / `lfo` / `trigger` modulation — "go crazy". Output
-goes to `out/ting/config.json` (override with `--out`); copy it onto the
+### The 8 FX styles
+
+Eight named "types" capture the essence of Teenage Engineering's instant FX.
+Each is a fixed effect chain (its character), with every parameter randomised
+inside that style's own ranges — so each pack is different but still sounds
+like what it says on the tin:
+
+| # | Style | Essence |
+| --- | --- | --- |
+| 1 | ECHO | dub tape echo — repeats, feedback, space |
+| 2 | SPRING | spring reverb — boingy metallic space |
+| 3 | PIXIE | pitch-up harmony — chipmunk pixie voice |
+| 4 | ROBOT | ring modulation — metallic robotic voice |
+| 5 | GRIT | distortion / fuzz — drive and saturation |
+| 6 | WOBBLE | filter wobble — tremolo / wub-wub |
+| 7 | RADIO | broken radio — bandpassed lo-fi static |
+| 8 | GLITCH | glitch / stutter — atonal chaos |
+
+`--fx 1,3,5,7` assigns those styles to slots 0–3 in order; give fewer and the
+remaining slots are topped up with random styles from the rest. All parameter
+values stay inside the ranges documented in the official guide, with
+`handle` / `shake` / `lfo` / `trigger` modulation wired into each style.
+
+Output goes to `out/ting/config.json` (override with `--out`); copy it onto the
 `tingdisk` volume and restart the mic.
 
 ## Manifest format

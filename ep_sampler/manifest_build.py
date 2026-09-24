@@ -160,8 +160,14 @@ def heuristic_classify(filename: str) -> dict:
 
 
 def scan_library(directory: Path, use_ai: bool, api_key: str = "",
-                 model: str = "", base_url: str = "") -> list[SampleRec]:
-    """Walk `directory` and classify every audio file found."""
+                 model: str = "", base_url: str = "",
+                 known: dict[str, SampleRec] | None = None) -> list[SampleRec]:
+    """Walk `directory` and classify every audio file found.
+
+    `known` maps relative file paths to already-classified records; those are
+    reused as-is, so only new files are classified (saves API calls on
+    re-scans). Files in `known` that no longer exist are dropped.
+    """
     directory = directory.expanduser()
     files: list[Path] = []
     if directory.is_dir():
@@ -178,34 +184,42 @@ def scan_library(directory: Path, use_ai: bool, api_key: str = "",
         print("  nothing to listen to here")
         return []
 
-    print(f"  found {len(files)} sounds")
-
-    recs: list[SampleRec] = []
     rel_of = {f: str(f.relative_to(directory)) for f in files}
+    known = known or {}
+
+    new_files = [f for f in files if rel_of[f] not in known]
+    print(f"  found {len(files)} sounds ({len(new_files)} new)")
 
     ai_map: dict[str, dict] = {}
-    if use_ai:
-        print("  asking deepseek to identify the sounds ...")
+    if new_files:
+        if use_ai:
+            print("  asking deepseek to identify the new sounds ...")
 
-        def _progress(done: int, total: int) -> None:
-            if done < total:
-                print(f"  ... identified {done}/{total} sounds")
+            def _progress(done: int, total: int) -> None:
+                if done < total:
+                    print(f"  ... identified {done}/{total} sounds")
 
-        ai_map = classify_filenames(list(rel_of.values()), api_key,
-                                    model=model or "deepseek-chat",
-                                    base_url=base_url or "https://api.deepseek.com",
-                                    on_progress=_progress)
-        if ai_map:
-            print(f"  deepseek named {len(ai_map)}/{len(files)} sounds")
+            ai_map = classify_filenames([rel_of[f] for f in new_files], api_key,
+                                        model=model or "deepseek-chat",
+                                        base_url=base_url or "https://api.deepseek.com",
+                                        on_progress=_progress)
+            if ai_map:
+                print(f"  deepseek named {len(ai_map)}/{len(new_files)} sounds")
+        else:
+            print("  identifying new sounds from their names ...")
     else:
-        print("  identifying sounds from their names ...")
+        print("  nothing new - reusing the cached index")
 
+    recs: list[SampleRec] = []
     for f in files:
         rel = rel_of[f]
-        info = ai_map.get(rel) or heuristic_classify(rel)
-        name = info.get("name") or humanize_stem(f)
-        recs.append(SampleRec(file=rel, name=name,
-                              category=info["category"], bpm=info.get("bpm")))
+        if rel in known:
+            recs.append(known[rel])
+        else:
+            info = ai_map.get(rel) or heuristic_classify(rel)
+            name = info.get("name") or humanize_stem(f)
+            recs.append(SampleRec(file=rel, name=name,
+                                  category=info["category"], bpm=info.get("bpm")))
     return recs
 
 

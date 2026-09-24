@@ -185,7 +185,8 @@ ep-sampler manifest --rescan        # rescan first, then build
 ```
 
 - `scan` walks `library_dir` recursively, classifies every file, and writes a
-  flat JSON index to `sample_index` (no database).
+  flat JSON index to `sample_index` (no database). Re-running `scan` only
+  classifies new files - everything already indexed is reused.
 - `manifest` reads that index by default and writes `manifest.txt`.
 
 ### Sample classification (DeepSeek)

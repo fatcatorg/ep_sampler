@@ -376,10 +376,13 @@ def cmd_scan(args: argparse.Namespace) -> int:
               file=sys.stderr)
         use_ai = False
 
+    index_path = Path(cfg["sample_index"]).expanduser()
+    known = {s.file: s for s in (load_index(index_path) or [])}
+
     print(f"scanning {directory} ...")
     samples = scan_library(directory, use_ai, _api_key(cfg),
-                           cfg["deepseek_model"], cfg["deepseek_base_url"])
-    index_path = Path(cfg["sample_index"]).expanduser()
+                           cfg["deepseek_model"], cfg["deepseek_base_url"],
+                           known=known)
     save_index(index_path, directory, samples)
     print(f"indexed {len(samples)} samples -> {index_path}")
     _print_category_breakdown(samples)

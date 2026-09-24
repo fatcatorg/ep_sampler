@@ -5,12 +5,16 @@ Commands:
     build          convert the manifest's samples and build the .ppak
     build-factory  build a .ppak from the EP-133 / EP-1320 factory sample set
     ting           build an EP-2350 Ting config.json (FX mic)
+    scan           scan the sample library and cache the index
+    manifest       auto-build manifest.txt from the sample library
     add            append one sample to the manifest
     inspect        list the contents of a built .ppak
 """
 
 import argparse
 import json
+import os
+import random
 import re
 import sys
 import zipfile
@@ -21,15 +25,22 @@ from .audio import convert_wav
 from .factory import (DEVICE_LABELS, DEVICE_ORDER, device_label, device_meta,
                       find_samples, normalize_device)
 from .manifest import Sample, parse_manifest
+from .manifest_build import (GUIDES, build_manifest, load_index, save_index,
+                             scan_library)
 from .pad_record import DEFAULT_BLANK_PAD, PAD_RECORD_SIZE
 from .pak import build
 from .ting import (FX_TYPES, default_config, sample_entries, typed_config,
-                      write_config)
+                   write_config)
 
 DEFAULTS = {
     "samples_dir": "samples",
     "ep133_samples_dir": "",
     "ep1320_samples_dir": "",
+    "library_dir": "samples",
+    "sample_index": "state/sample-index.json",
+    "deepseek_api_key": "",
+    "deepseek_model": "deepseek-chat",
+    "deepseek_base_url": "https://api.deepseek.com",
     "manifest_file": "manifest.txt",
     "out_dir": "out",
     "build_dir": "build",
@@ -312,6 +323,134 @@ def _print_pads(tar_bytes: bytes) -> None:
 
 
 # --------------------------------------------------------------------------
+# scan + manifest (sample library -> manifest.txt)
+# --------------------------------------------------------------------------
+
+def _api_key(cfg: dict) -> str:
+    return os.environ.get("DEEPSEEK_API_KEY") or cfg.get("deepseek_api_key") or ""
+
+
+def _resolve_ai(flag: bool | None, cfg: dict) -> bool:
+    """flag True/False forces AI on/off; None = auto (AI when a key exists)."""
+    if flag is not None:
+        return flag
+    return bool(_api_key(cfg))
+
+
+def _print_category_breakdown(samples) -> None:
+    counts: dict[str, int] = {}
+    for s in samples:
+        counts[s.category] = counts.get(s.category, 0) + 1
+    print("  " + ", ".join(f"{c}:{n}" for c, n in
+                           sorted(counts.items(), key=lambda kv: -kv[1])))
+
+
+def cmd_scan(args: argparse.Namespace) -> int:
+    cfg = load_config(args.config)
+    directory = (Path(args.dir).expanduser() if args.dir
+                 else Path(cfg["library_dir"]).expanduser())
+    if not directory.is_dir():
+        print(f"sample directory not found: {directory}", file=sys.stderr)
+        return 1
+
+    use_ai = _resolve_ai(args.ai, cfg)
+    if use_ai and not _api_key(cfg):
+        print("no DeepSeek API key - falling back to filename heuristics",
+              file=sys.stderr)
+        use_ai = False
+
+    print(f"scanning {directory} ...")
+    samples = scan_library(directory, use_ai, _api_key(cfg),
+                           cfg["deepseek_model"], cfg["deepseek_base_url"])
+    index_path = Path(cfg["sample_index"]).expanduser()
+    save_index(index_path, directory, samples)
+    print(f"indexed {len(samples)} samples -> {index_path}")
+    _print_category_breakdown(samples)
+    return 0
+
+
+def cmd_manifest(args: argparse.Namespace) -> int:
+    cfg = load_config(args.config)
+    if args.list_guides:
+        _print_guides()
+        return 0
+
+    directory = Path(cfg["library_dir"]).expanduser()
+    index_path = Path(cfg["sample_index"]).expanduser()
+
+    samples = None if args.rescan else load_index(index_path)
+    if samples is None:
+        use_ai = _resolve_ai(args.ai, cfg)
+        if use_ai and not _api_key(cfg):
+            print("no DeepSeek API key - falling back to filename heuristics",
+                  file=sys.stderr)
+            use_ai = False
+        print(f"scanning {directory} ...")
+        samples = scan_library(directory, use_ai, _api_key(cfg),
+                               cfg["deepseek_model"], cfg["deepseek_base_url"])
+        save_index(index_path, directory, samples)
+    if not samples:
+        print(f"no samples found in {directory}", file=sys.stderr)
+        return 1
+
+    guide = args.guide
+    if guide is None and args.randomize:
+        guide = random.choice(GUIDES)["key"]
+    guide = guide or "full"
+
+    if args.randomize:
+        seed = args.seed if args.seed is not None \
+            else random.SystemRandom().randint(0, 2**31 - 1)
+    else:
+        seed = args.seed if args.seed is not None else 0
+
+    rows = build_manifest(samples, guide, seed=seed, max_total=args.max)
+    out = (Path(args.out).expanduser() if args.out
+           else Path(cfg["manifest_file"]).expanduser())
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", encoding="utf-8") as fh:
+        fh.write(f"# auto-generated by ep-sampler manifest (guide={guide}, "
+                 f"seed={seed})\n")
+        for r in rows:
+            fh.write("\t".join(str(r[k]) for k in
+                               ("slot", "group", "pad", "bpm", "time_mode",
+                                "playmode", "name", "file")) + "\n")
+
+    print(f"built {out}  ({len(rows)} pads, guide {guide}, seed {seed})")
+    groups: dict[str, int] = {}
+    for r in rows:
+        groups[r["group"]] = groups.get(r["group"], 0) + 1
+    print("  " + ", ".join(f"group {g}:{n}" for g, n in sorted(groups.items())))
+    return 0
+
+
+def _print_guides() -> None:
+    print("Manifest guides:")
+    for i, g in enumerate(GUIDES, 1):
+        print(f"  [{i}] {g['name']:<9} {g['essence']}")
+
+
+def _prompt_guide() -> str | None:
+    print("\nManifest guides (Enter = random):")
+    for i, g in enumerate(GUIDES, 1):
+        print(f"  [{i}] {g['name']:<9} {g['essence']}")
+    while True:
+        try:
+            ans = input("> ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            raise
+        if ans == "":
+            return None
+        if ans.isdigit() and 1 <= int(ans) <= len(GUIDES):
+            return GUIDES[int(ans) - 1]["key"]
+        for g in GUIDES:
+            if ans == g["key"] or g["name"].lower().startswith(ans):
+                return g["key"]
+        print("  choose a number or guide name")
+
+
+# --------------------------------------------------------------------------
 # interactive menu
 # --------------------------------------------------------------------------
 
@@ -364,13 +503,22 @@ def cmd_menu(args: argparse.Namespace) -> int:
 
         source = _prompt_choice(
             "What do you want to build?",
-            ["manifest", "factory"],
-            ["My manifest (manifest.txt)", "Factory sample folders"],
+            ["manifest", "factory", "auto"],
+            ["My manifest (manifest.txt)", "Factory sample folders",
+             "Auto-build manifest from library"],
             default="manifest")
     except (EOFError, KeyboardInterrupt):
         print("\nno input - use a subcommand for non-interactive runs "
               "(e.g. 'ep-sampler build', 'ep-sampler build-factory ep133')")
         return 1
+
+    if source == "auto":
+        guide = _prompt_guide()
+        rnd = _prompt_yesno("Randomise the selection?", default="y")
+        ns = argparse.Namespace(
+            config=args.config, list_guides=False, rescan=False, guide=guide,
+            randomize=(rnd == "y"), seed=None, max=48, out=None, ai=None)
+        return cmd_manifest(ns)
 
     if source == "factory":
         # EP-40 has no bundled factory set; constrain to the two that do.
@@ -581,6 +729,34 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("--out", default=None,
                    help="output path (default: out/ting/config.json)")
     t.set_defaults(func=cmd_ting)
+
+    s = sub.add_parser("scan", help="scan the sample library and cache the index")
+    s.add_argument("--dir", default=None,
+                   help="sample directory (default: library_dir)")
+    s.add_argument("--ai", dest="ai", action="store_true", default=None,
+                   help="classify with DeepSeek")
+    s.add_argument("--no-ai", dest="ai", action="store_false",
+                   help="classify with filename heuristics")
+    s.set_defaults(func=cmd_scan)
+
+    m = sub.add_parser("manifest",
+                       help="build manifest.txt from the sample library")
+    m.add_argument("--guide", default=None, help="guide key (see --list-guides)")
+    m.add_argument("--randomize", action="store_true",
+                   help="randomise selection (and guide if none given)")
+    m.add_argument("--seed", type=int, default=None,
+                   help="random seed for reproducible builds")
+    m.add_argument("--max", type=int, default=48,
+                   help="max pads to fill (default 48)")
+    m.add_argument("--rescan", action="store_true",
+                   help="rescan the library instead of using the cached index")
+    m.add_argument("--out", default=None,
+                   help="output manifest path (default: manifest_file)")
+    m.add_argument("--list-guides", action="store_true",
+                   help="list the manifest guides and exit")
+    m.add_argument("--ai", dest="ai", action="store_true", default=None)
+    m.add_argument("--no-ai", dest="ai", action="store_false")
+    m.set_defaults(func=cmd_manifest)
 
     return p
 

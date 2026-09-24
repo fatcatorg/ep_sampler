@@ -123,6 +123,60 @@ Factory builds use a **blank project** — they restore the sample library into
 the factory slots but do not reproduce the factory demo patterns (those are
 sequencer data, not part of the known `.ppak` sound format).
 
+## Auto-building the manifest
+
+Instead of hand-writing `manifest.txt`, scan a folder of samples and let the
+tool generate it:
+
+```bash
+ep-sampler scan                    # scan library_dir and cache the index
+ep-sampler manifest --guide drums  # build manifest.txt from the cached index
+ep-sampler manifest --rescan       # rescan first, then build
+```
+
+- `scan` walks `library_dir` (recursively), classifies every file, and writes a
+  flat JSON index to `sample_index` — no database.
+- `manifest` reads that index by default and writes `manifest.txt`.
+
+### Classification (DeepSeek)
+
+Classification uses the **DeepSeek API** when a key is present, and falls back
+to filename keywords otherwise. Only filenames are sent to the API — never
+audio.
+
+```bash
+export DEEPSEEK_API_KEY=sk-...
+ep-sampler scan --ai        # force DeepSeek classification
+ep-sampler scan --no-ai     # force filename heuristics
+```
+
+The model is configurable (`deepseek_model`, default `deepseek-chat`); point it
+at DeepSeek's fast/cheap model if you prefer.
+
+### The 8 guides
+
+Like the Ting FX styles, a guide biases which sample categories end up in the
+manifest. Randomisation picks *which* samples, while the output is always
+sensibly ordered — drums first (kicks → snares → hats → percussion), then bass,
+then chords/melody, then vocals/fx.
+
+| # | Guide | Essence |
+| --- | --- | --- |
+| 1 | FULL KIT | balanced — a bit of everything |
+| 2 | DRUMS | drum-focused |
+| 3 | BASS | bass-forward |
+| 4 | MELODIC | chords, melodies, bass |
+| 5 | DUB | heavy bass, fx and percussion |
+| 6 | TECHNO | kicks, hats, claps, percussion |
+| 7 | VOCAL | vocals and fx forward |
+| 8 | CHAOS | everything, random but grouped |
+
+```bash
+ep-sampler manifest --guide techno --randomize --seed 7
+ep-sampler manifest --randomize      # random guide + random selection
+ep-sampler manifest --list-guides
+```
+
 ## Ting (EP-2350 FX mic)
 
 The Ting is a standalone handheld FX microphone, not a sampler. It mounts a
@@ -208,6 +262,11 @@ built-in defaults). Every key can also be overridden on the command line.
 | `samples_dir` | Main folder of input sample WAVs. |
 | `ep133_samples_dir` | Folder holding the EP-133 default/factory samples. |
 | `ep1320_samples_dir` | Folder holding the EP-1320 default/factory samples. |
+| `library_dir` | Sample folder that `scan` / `manifest` index. |
+| `sample_index` | Flat-file cache of the scan (JSON). |
+| `deepseek_api_key` | DeepSeek API key (or use `DEEPSEEK_API_KEY`). |
+| `deepseek_model` | DeepSeek model name (default `deepseek-chat`). |
+| `deepseek_base_url` | DeepSeek API endpoint. |
 | `manifest_file` | The sample list. |
 | `out_dir` | Where the `.ppak` and intermediate files go. |
 | `project` | Which project (1..99) the backup carries. |

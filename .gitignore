@@ -9,6 +9,7 @@ venv/
 out/
 build/
 dist/
+state/
 
 # input sample audio (keep the folder, ignore the audio files)
 samples/*.wav

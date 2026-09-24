@@ -5,9 +5,9 @@ official tool required to create them.
 
 | Device | What ep-sampler does for it |
 | --- | --- |
-| **EP-133 K.O. II** | Build `.ppak` backups from a sample list, or rebuild the factory sound set. |
-| **EP-1320 Medieval** | Same — `.ppak` backups and the factory sound set. |
-| **EP-40 Riddim** | Build `.ppak` backups from a sample list. |
+| **EP-133 K.O. II** | Build `.pak` backups from a sample list, or rebuild the factory sound set. |
+| **EP-1320 Medieval** | Same — `.pak` backups and the factory sound set. |
+| **EP-40 Riddim** | Build `.pak` backups from a sample list. |
 | **EP-2350 Ting** | Generate `config.json` FX presets for the FX microphone. |
 
 It also **auto-builds the sample list for you**: scan a folder of samples, work
@@ -44,7 +44,7 @@ python -m ep_sampler --help
 python -m ep_sampler build          # or: ep-sampler build
 ```
 
-The result is `out/project-01.ppak`. In the official **EP Sample Tool**, use
+The result is `out/project-01.pak`. In the official **EP Sample Tool**, use
 **Load** / **Upload** and point it at that file.
 
 **2. Rebuild a device's factory sound set** (EP-133 / EP-1320) from your own
@@ -97,13 +97,13 @@ below (so it can be scripted).
 
 | Command | What it does |
 | --- | --- |
-| `ep-sampler build` | Convert `manifest.txt`'s samples and build the `.ppak`. |
-| `ep-sampler build-factory ep133` | Build a `.ppak` from the EP-133/EP-1320 factory sample set. |
+| `ep-sampler build` | Convert `manifest.txt`'s samples and build the `.pak`. |
+| `ep-sampler build-factory ep133` | Build a `.pak` from the EP-133/EP-1320 factory sample set. |
 | `ep-sampler scan` | Scan the sample library and cache what it finds. |
 | `ep-sampler manifest` | Auto-build `manifest.txt` from the library. |
 | `ep-sampler ting` | Build an EP-2350 Ting `config.json`. |
 | `ep-sampler add <file.wav>` | Append one sample to `manifest.txt`. |
-| `ep-sampler inspect <file.ppak>` | List a `.ppak`'s metadata, sounds and pads. |
+| `ep-sampler inspect <file.pak>` | List a `.pak`'s metadata, sounds and pads. |
 
 Add `--help` to any command for its full options (for example
 `ep-sampler manifest --help`). Note that `--config <path>` goes **before** the
@@ -164,11 +164,11 @@ built-in default). Values can also be overridden on the command line.
 | `deepseek_base_url` | DeepSeek API endpoint. |
 | `manifest_file` | The sample list. |
 | `out_dir` | Where output files go. |
-| `pak_file_name` | Output `.ppak` name template; supports `__PROJECT__`, `__DEVICE__`, `__DATE__` (`YYYY-MM-DD`), `__TIME__` (`HHMMSS`), `__DATETIME__`. |
+| `pak_file_name` | Output `.pak` name template; supports `__PROJECT__`, `__DEVICE__`, `__DATE__` (`YYYY-MM-DD`), `__TIME__` (`HHMMSS`), `__DATETIME__`. |
 | `project` | Which project (1..99) the backup carries. |
 | `mode` | `scratch` (build from the format) or `base` (patch a real backup). |
 | `base_pak` | A real Sample Tool backup, used when `mode = "base"`. |
-| `device_sku` / `base_sku` | `TE032AS001` for K.O. II / riddim. |
+| `device_sku` / `base_sku` | `TE032AS001` for EP-133 / EP-1320, `TE032AS006` for EP-40. |
 | `device_version` | Your device's OS version (shown in Sample Tool). |
 | `audio_tool` | `ffmpeg` or `sox`. |
 | `ffmpeg_extra_args` | Extra converter args, e.g. `["-af", "loudnorm"]`. |
@@ -237,9 +237,9 @@ ep-sampler build-factory ep133
 ep-sampler build-factory ep1320
 ```
 
-It finds each factory sample **by name** (case-insensitive, ignoring spaces and
-punctuation) anywhere under the configured folders, including sub-folders — so
-`BATTLE KIK` matches `some/where/battle_kik.wav`. Search order:
+It finds each factory sample by its **slot number** in the filename first (e.g.
+`025_kick sub.wav` → slot 25), falling back to a name match. It searches
+anywhere under the configured folders, including sub-folders. Search order:
 
 1. the device's own folder (`ep133_samples_dir` / `ep1320_samples_dir`)
 2. the main folder (`samples_dir`)
@@ -290,20 +290,20 @@ Output goes to `out/ting/config.json` (override with `--out`); copy it onto the
 
 ## Build modes
 
-- **`scratch`** (default) builds the `.ppak` entirely from the documented
+- **`scratch`** (default) builds the `.pak` entirely from the documented
   format. Self-contained, but the Sample Tool parser is strict — **verify the
   result on your device** before relying on it.
-- **`base`** starts from a real `.ppak` you export once from the Sample Tool,
+- **`base`** starts from a real `.pak` you export once from the Sample Tool,
   patches only the bytes that need to change, and re-zips. This is the most
   compatibility-safe path. Set `"mode": "base"` and
-  `"base_pak": "/path/to/backup.ppak"` in `config.json`.
+  `"base_pak": "/path/to/backup.pak"` in `config.json`.
 
 Either way, check free space on the device first — a restore that doesn't fit
 fails with `ERR SYSTEM_MODEL`.
 
 ## Notes
 
-- The `.ppak` format was reverse-engineered by the community, primarily in
+- The `.pak` format was reverse-engineered by the community, primarily in
   [`ZacharySBrown/ep133-ppak`](https://github.com/ZacharySBrown/ep133-ppak)
   (its `PROTOCOL.md` is the reference), building on `phones24`'s parser,
   `ep133-krate` and `garrettjwilke`'s SysEx work. Not affiliated with Teenage
@@ -315,5 +315,5 @@ fails with `ERR SYSTEM_MODEL`.
 
 ## License
 
-MIT. Provided as-is; restoring a malformed `.ppak` can wipe or corrupt a
+MIT. Provided as-is; restoring a malformed `.pak` can wipe or corrupt a
 device's sample memory, so always keep a real Sample Tool backup first.

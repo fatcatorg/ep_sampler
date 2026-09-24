@@ -16,15 +16,15 @@ from pathlib import Path
 
 AUDIO_EXTS = (".wav", ".aif", ".aiff", ".mp3", ".flac", ".ogg", ".m4a")
 
-# Device identity used in the .ppak meta.json. The hardware SKU is shared
+# Device identity used in the .pak meta.json. The hardware SKU is shared
 # across the TE032 family; device_version reflects the running OS. The EP-40
-# Riddim ships the 128 MiB board (TE032AS002). These are sensible defaults -
+# Riddim ships the 128 MiB board (TE032AS006). These are sensible defaults -
 # verify against a real Sample Tool backup of your own unit (`inspect`).
 DEVICES = {
     "ep40": {
         "device_name": "EP-40",
-        "device_sku": "TE032AS002",
-        "base_sku": "TE032AS001",
+        "device_sku": "TE032AS006",
+        "base_sku": "TE032AS006",
     },
     "ep133": {
         "device_name": "EP-133",
@@ -36,7 +36,7 @@ DEVICES = {
         "device_sku": "TE032AS001",
         "base_sku": "TE032AS001",
     },
-    # The Ting is an FX microphone, not a sampler - it has no .ppak / SKU, so
+    # The Ting is an FX microphone, not a sampler - it has no .pak / SKU, so
     # these fields are placeholders. It is handled by the ting config builder.
     "ep2350": {
         "device_name": "EP-2350",

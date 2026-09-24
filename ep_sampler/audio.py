@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audio helpers: WAV conversion to the EP-133 .ppak format (44.1 kHz stereo
+"""Audio helpers: WAV conversion to the EP-133 .pak format (44.1 kHz stereo
 16-bit PCM) and frame counting."""
 
 import subprocess

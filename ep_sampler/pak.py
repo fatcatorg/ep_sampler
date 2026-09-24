@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Assemble the .ppak archive - the backup file the EP Sample Tool restores.
+"""Assemble the .pak archive - the backup file the EP Sample Tool restores.
 
-A .ppak is a ZIP with (all entry paths carrying a leading "/"):
+A .pak is a ZIP with (all entry paths carrying a leading "/"):
 
     /projects/PXX.tar   - one TAR holding a 26-byte record per pad
     /sounds/<n> name.wav- one 44.1 kHz stereo 16-bit WAV per sample slot
@@ -191,7 +191,7 @@ def build_base(cfg: dict, samples: list[Sample], sounds_dir: Path) -> None:
 
 
 def build(cfg: dict, samples: list[Sample], sounds_dir: Path) -> dict[str, object]:
-    """Build the .ppak. Returns a small summary dict."""
+    """Build the .pak. Returns a small summary dict."""
     os.makedirs(os.path.dirname(os.path.abspath(cfg["out"])), exist_ok=True)
     if cfg["mode"] == "base":
         build_base(cfg, samples, sounds_dir)

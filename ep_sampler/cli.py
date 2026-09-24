@@ -2,13 +2,13 @@
 """Command-line interface for ep_sampler.
 
 Commands:
-    build          convert the manifest's samples and build the .ppak
-    build-factory  build a .ppak from the EP-133 / EP-1320 factory sample set
+    build          convert the manifest's samples and build the .pak
+    build-factory  build a .pak from the EP-133 / EP-1320 factory sample set
     ting           build an EP-2350 Ting config.json (FX mic)
     scan           scan the sample library and cache the index
     manifest       auto-build manifest.txt from the sample library
     add            append one sample to the manifest
-    inspect        list the contents of a built .ppak
+    inspect        list the contents of a built .pak
 """
 
 import argparse
@@ -45,7 +45,7 @@ DEFAULTS = {
     "manifest_file": "manifest.txt",
     "out_dir": "out",
     "build_dir": "build",
-    "pak_file_name": "project-__PROJECT__-__DATE__.ppak",
+    "pak_file_name": "project-__PROJECT__-__DATE__.pak",
     "project": 1,
     "mode": "scratch",
     "base_pak": "",
@@ -138,7 +138,7 @@ def cmd_build(args: argparse.Namespace) -> int:
 
 
 def _convert_samples(samples: list[Sample], sounds_dir: Path, cfg: dict) -> bool:
-    """Convert each sample to the .ppak format. Returns False on any error."""
+    """Convert each sample to the .pak format. Returns False on any error."""
     tool = cfg["audio_tool"]
     if tool == "sox":
         extra = cfg.get("sox_extra_args") or []
@@ -223,7 +223,7 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
         return 1
 
     out = Path(args.out).expanduser() if args.out else \
-        out_dir / _expand_pak_name(f"{device}-factory-__DATE__.ppak", cfg)
+        out_dir / _expand_pak_name(f"{device}-factory-__DATE__.pak", cfg)
     cfg["out"] = str(out)
     cfg["mode"] = "scratch"
 
@@ -520,7 +520,7 @@ def cmd_menu(args: argparse.Namespace) -> int:
             list(DEVICE_ORDER), [DEVICE_LABELS[d] for d in DEVICE_ORDER],
             default="ep40")
 
-        # The Ting is an FX mic - it takes a config.json, not a .ppak.
+        # The Ting is an FX mic - it takes a config.json, not a .pak.
         if device == "ep2350":
             rnd = _prompt_yesno("Randomise the FX presets?", default="n")
             styles = []
@@ -685,7 +685,7 @@ def _prompt_fx_styles() -> list[int]:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="ep-sampler",
-        description="Build a list of sample WAVs into an EP-133 .ppak backup.")
+        description="Build a list of sample WAVs into an EP-133 .pak backup.")
     p.add_argument("--version", action="version",
                    version=f"ep-sampler {__version__}")
     p.add_argument("--config", type=Path, default=None,
@@ -693,7 +693,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub = p.add_subparsers(dest="command", required=False)
 
-    b = sub.add_parser("build", help="convert samples and build the .ppak")
+    b = sub.add_parser("build", help="convert samples and build the .pak")
     b.add_argument("--samples-dir", default=None)
     b.add_argument("--manifest", dest="manifest_file", default=None)
     b.add_argument("--out-dir", default=None)
@@ -714,7 +714,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     f = sub.add_parser(
         "build-factory",
-        help="build a .ppak from a device's factory sample set")
+        help="build a .pak from a device's factory sample set")
     f.add_argument("device", help="ep133 or ep1320")
     f.add_argument("--out-dir", default=None)
     f.add_argument("--out", default=None,
@@ -741,7 +741,7 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--name", default=None)
     a.set_defaults(func=cmd_add)
 
-    i = sub.add_parser("inspect", help="list the contents of a .ppak")
+    i = sub.add_parser("inspect", help="list the contents of a .pak")
     i.add_argument("file")
     i.set_defaults(func=cmd_inspect)
 

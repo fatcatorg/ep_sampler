@@ -1,308 +1,310 @@
-1	MICRO KICK
-2	NT KICK
-3	NT KICK B
-4	NT KICK C
-5	NT KICK D
-6	LOCK KIK
-7	KICK GRIT
-8	KICK VERB
-9	KICK MID
-10	KICK BUMP
-11	KICK 9X9 DIRT
-12	KICK 9X9 DIRT B
-13	KICK 9X9 DIRT C
-14	KICK 9X9 DIRT D
-15	KICK 9X9 DIRT E
-16	KICK HARD
-17	KICK AIR
-18	KICK THUD
-19	AFTERPARTY KICK
-20	CARDIO KICK 1
-21	NT ALT KICK
-22	NT ALT KICK B
-23	NT ALT KICK C
-24	KICK DIRT
-25	KICK SUB
-26	KICK SP
-27	KICK FLUX
-28	KICK FLUX B
-29	KICK SUB B
-30	KICK OPEN
-31	BOOMER KICK
-100	NT SNARE
-101	NT SNARE B
-102	NT SNARE C
-103	SNARE LO
-104	SNARE MID
-105	SNARE HI
-106	SNARE 6X6 1
-107	SNARE 6X6 2
-108	SNARE 6X6 3
-109	SNARE CLASSIC
-110	SNARE FAT
-111	SNARE SMACK
-112	SNARE BURST
-113	BRUSHY SNARE 1
-114	NT SNARE ALT
-115	NT SNARE ALT B
-116	NT SNARE ALT C
-117	SNARE RIM
-118	SNARE PUNCH
-119	SNARE POP
-120	SNARE SNAP
-121	SNARE VINYL
-122	SNARE MP3K
-123	SNARE MINI BM
-124	SNARE VINYL B
-125	SNARE RES
-126	SNARE OPEN
-127	SNARE WOOD
-128	QUIK ROLL 3
-129	LONDON SNARE 2
-130	NT RIMSHOT
-131	NT RIMSHOT B
-132	NT RIMSHOT C
-133	RIM LO
-134	RIM MID
-135	RIM HI
-136	RIMSHOT DDDI
-137	RIMSHOT VINYL
-138	RIMSHOT 7X7 SP
-139	RIMSHOT DMX
-140	RIM DARK
-141	RIM SMACK
-142	RIM SNAP
-143	SIDEQUEST SNARE
-144	KNOW RIMSHOT I
-145	AKKOUNTANT RIM 2
-200	NT HH CLOSED
-201	NT HH CLOSED B
-202	NT HH CLOSED C
-203	CLOSED HAT LO
-204	CLOSED HAT MID
-205	CLOSED HAT HI
-206	CLOSED HAT PEDAL
-207	CLOSED HAT FOOT
-208	HAT CLOSED 9X9
-209	HAT CLOSED 6Х6
-210	HAT CLOSED 6X6
-211	HAT CLOSED 8X8
-212	CLOSED HAT LO B
-213	CLOSED HAT HI B
-214	CLOSED HAT AIR
-215	GOLDEN HAT I
-216	SHINE HAT 4
-217	CRUNCH HAT 2
-218	NT HH OPEN
-219	NT HH OPEN B
-220	NT HH OPEN C
-221	OPEN HAT REAL
-222	OPEN HAT DRIVE
-223	OPEN HAT METAL
-224	HAT OPEN 9X9
-225	HAT OPEN 5X5
-226	HAT OPEN 6X6
-227	HAT OPEN 8X8
-228	OPEN HAT LO
-229	OPEN HAT HI
-230	OPEN HAT AIR
-231	GOLDEN HAT I B
-232	BRUSH HAT 4
-233	LUCKY DBL HAT 2
-234	GIRTH OPEN HAT 3
-235	NT RIDE
-236	NT RIDE B
-237	RIDE DARK
-238	RIDE BRITE
-239	RIDE SAKATA
-240	CYMBAL MPI
-241	RIDE 7X7
-242	RIDE DARK B
-243	RIDE LITE
-244	RIDE BELL
-245	RIDE HI
-246	TOASTER BELL
-247	NT RIDE C
-248	CRASH
-249	CRASH 9X9
-250	CHINA 626
-251	SPLASH
-252	CRASH CYM
-253	80 GREAT CRASH
-300	NT CLAP
-301	NT CLAP B
-302	NT CLAP C
-303	CLAP REAL
-304	CLAP HARD
-305	CLAP SNAP
-306	CLAP VINYL
-307	CLAP TRUMULATOR
-308	CLAP SP DISCO
-309	CLAP SP DISCO B
-310	CLAP DARK
-311	CLAP LITE
-312	CLAP AIR
-313	CLAP NOISE
-314	GOSPEL CLAP 3
-315	HOMECOMING CLAP
-316	DETROIT CLAP 2
-317	NT TAMBO
-318	NT TAMBO B
-319	NT TAMBO C
-320	HAND DRUM LO
-321	AGOGO
-322	BONGO MID 4
-323	HAND DRUM HI
-324	CONGA MID II
-325	TAMB
-326	MARACA
-327	BONGO HI
-328	GUIRO
-329	BONGO LO
-330	CLAVE
-331	CONGA LO
-332	CONGA HI
-333	CABASE LMI
-334	CABASA MP3K
-335	CABASA LNNDRUM
-336	SHAKER DMX
-337	TAMB B
-338	CLAVE B COWBELL
-339	SHAKER
-340	HERMES HIHAT 2
-341	LOWW CLAVE 1
-342	NT PERC
-343	NT PERC B
-344	NT PERC C
-345	TOM FAT
-346	TOM SKIN
-347	TOM ROUND LO
-348	TOM ROUND HI
-349	TOM SP
-350	TOM LNNDRUM
-351	TOM LO FLAM
-352	TOM MID
-353	TOM HI
-354	SWEET SHAKE I
-355	FUNCTION TOM 3
-356	HUNDOBELL PERC 2
-400	NT BASS
-401	S95X ROUND
-402	TUBRO BASS
-403	E BASS ROUND
-404	BASIC
-405	MP3 SUB
-406	SYN A RE
-407	UPRIGHT SUB
-408	E BASS PICK
-409	THMP
-410	CAT ENVELOPE
-411	TB3X3 PUNCH
-412	UGGBASS
-413	E BASS PICK B
-414	PERFECT BASS
-415	PRODIGY SUB
-416	S95X SUB
-417	BASS THUB
-418	ROCKELBASS MID
-419	E BASS DIST
-420	OB SUB
-421	CX TONE
-422	BUZZ BASS
-423	ROCKELBASS SHORT
-424	MNO EVO FILTER
-425	SYNTH 4TH HIT
-426	THIRTY SEVEN SUB
-427	ORGA
-428	MUD
-429	REESE
-430	P.SIX SIMPLE
-431	S612 ELECTRIC
-432	AKUBASS MIDLONG
-433	MUD B
-434	WET BASS
-435	CS5 SQUARE
-436	S612 WARM
-437	ELEC BASS
-438	BOING
-439	ORGAN DX HOUSE
-440	REVY
-441	SDSV TOM
-442	DR SMPL WARM
-443	GROWLY
-444	ORGANISH
-445	TWO SIX 00 SMOOT
-446	PRODIGY PUNCH
-447	FLATE
-448	KAA WA BELL AIR
-449	SO ROUND
-450	DE-EX SOLID
-451	CHICAGO
-452	SUBD
-453	PHONEC GRR
-454	OVERDRIVE
-455	PRODIGY SQUARE
-456	TOCK
-457	WLOBB WOBB
-458	PUFF
-459	RUDE TWANG
-500	BLUE
-501	PIANO S95X
-502	WURLI CLEAN
-503	MUTE STRATO
-504	CUTE EMU FLUTE
-505	ULTRA
-506	SQUICK
-507	CLAV 360 PHASER
-508	BABY CHORD
-509	BG VOCAL
-510	SKYLINE STRING
-511	OCTAVE STAB
-512	TRUMPET BREEZY
-513	SCARY VIBES
-514	SLY SYNTH CHORD
-515	EPIANO 360
-516	ORGAN DX VERB
-517	PLUCK HI BASS
-518	PLUCK HYBRID
-519	PROPHET PIANO
-520	EPIANO 360 BASS
-521	HOUSEORGAN DE-EX
-522	SOOTHE STRING
-523	CELLO PLUCKZ
-524	HIGH PAN
-525	SYNTH MICRO FUNK
-526	DR ORGAN CHORD
-527	LEADAFT
-528	SOOTHE STRONG
-529	SIMPLE TROMBONE
-530	CELLO 360
-531	FLUTE 360 FILTER
-532	ORGAN DX200 STAB
-533	WATERCHORD AM7
-534	SAD GUITAR
-535	HORN 360 ENGLISH
-536	STRINGS 360
-537	HOUSE CHORD EM7
-538	UPRIGHT CHORD
-539	EXOTIC PLUCK
-540	SKY LEAD
-541	STRINGS DR
-542	LIQUID CHORD EM7
-543	CHORDY F9SUS4
-544	BROKEN BELL PERC
-545	PLING CHORD
-546	S612 VERB HIT
-547	DR
-548	VOX S612 DARK
-549	SITAR ONE SHOT
-550	LOOK ORGAN
-551	THIRTY 7 STAB
-552	BUZZ DELAY
-553	VOX S612 EH
-554	GUZHENG
-555	NT CHORDY
-556	FX BIRDS TAPE
-557	VOX S612 GATED
-558	O3D
-559	SEARCH CHORD
+# EP-133 factory sounds (slot<TAB>name), from an official factory backup.
+1	micro kick
+2	nt kick
+3	nt kick b
+4	nt kick c
+5	nt kick d
+6	lock kik
+7	kick grit
+8	kick verb
+9	kick mid
+10	kick bump
+11	kick 9x9 dirt
+12	kick 9x9 dirt b
+13	kick 9x9 dirt c
+14	kick 9x9 dirt d
+15	kick 9x9 dirt e
+16	kick hard
+17	kick air
+18	kick thud
+19	cardio kick 1
+20	afterparty kick
+21	nt alt kick
+22	nt alt kick b
+23	nt alt kick c
+24	kick dirt
+25	kick sub
+26	kick sp
+27	kick flux
+28	kick flux b
+29	kick sub b
+30	kick open
+31	boomer kick
+100	nt snare
+101	nt snare b
+102	nt snare c
+103	snare lo
+104	snare mid
+105	snare hi
+106	snare 6x6 1
+107	snare 6x6 2
+108	snare 6x6 3
+109	snare classic
+110	snare fat
+111	snare smack
+112	snare burst
+113	brushy snare 1
+114	nt snare alt
+115	nt snare alt b
+116	nt snare alt c
+117	snare rim
+118	snare punch
+119	snare pop
+120	snare snap
+121	snare vinyl
+122	snare mp3k
+123	snare mini bm
+124	snare vinyl b
+125	snare res
+126	snare open
+127	snare wood
+128	quik roll 3
+129	london snare 2
+130	nt rimshot
+131	nt rimshot b
+132	nt rimshot c
+133	rim lo
+134	rim mid
+135	rim hi
+136	rimshot ddd1
+137	rimshot vinyl
+138	rimshot 7x7 sp
+139	rimshot dmx
+140	rim dark
+141	rim smack
+142	rim snap
+143	know rimshot 1
+144	sidequest snare
+145	akkountant rim 2
+200	nt hh closed
+201	nt hh closed b
+202	nt hh closed c
+203	closed hat lo
+204	closed hat mid
+205	closed hat hi
+206	closed hat pedal
+207	closed hat foot
+208	hat closed 9x9
+209	hat closed 5x5
+210	hat closed 6x6
+211	hat closed 8x8
+212	closed hat lo b
+213	closed hat hi b
+214	closed hat air
+215	golden hat 1
+216	crunch hat 2
+217	shine hat 4
+218	nt hh open
+219	nt hh open b
+220	nt hh open c
+221	open hat real
+222	open hat drive
+223	open hat metal
+224	hat open 9x9
+225	hat open 5x5
+226	hat open 6x6
+227	hat open 8x8
+228	open hat lo
+229	open hat hi
+230	open hat air
+231	girth open hat 3
+232	golden hat 1 b
+233	lucky dbl hat 2
+234	brush hat 4
+235	nt ride
+236	nt ride b
+237	ride dark
+238	ride brite
+239	ride sakata
+240	cymbal mp1
+241	ride 7x7
+242	ride dark b
+243	ride lite
+244	ride bell
+245	ride hi
+246	toaster bell
+247	nt ride c
+248	crash
+249	crash 9x9
+250	china 626
+251	splash
+252	crash cym
+253	80 great crash
+300	nt clap
+301	nt clap b
+302	nt clap c
+303	clap real
+304	clap hard
+305	clap snap
+306	clap vinyl
+307	clap trumulator
+308	clap sp disco
+309	clap sp disco b
+310	clap dark
+311	clap lite
+312	clap air
+313	clap noise
+314	gospel clap 3
+315	homecoming clap
+316	detroit clap 2
+317	nt tambo
+318	nt tambo b
+319	nt tambo c
+320	hand drum hi
+321	tamb
+322	hand drum lo
+323	bongo mid 4
+324	conga mid 11
+325	agogo
+326	bongo hi
+327	maraca
+328	bongo lo
+329	guiro
+330	clave
+331	conga lo
+332	conga hi
+333	cabase lm1
+334	cabasa mp3k
+335	cabasa lnndrum
+336	shaker dmx
+337	tamb b
+338	clave b
+339	cowbell
+340	shaker
+341	hermes hihat 2
+342	loww clave 1
+343	nt perc
+344	nt perc b
+345	nt perc c
+346	tom fat
+347	tom skin
+348	tom round lo
+349	tom round hi
+350	tom sp
+351	tom lnndrum
+352	tom lo flam
+353	tom mid
+354	tom hi
+355	sweet shake 1
+356	function tom 3
+357	hundobell perc 2
+400	nt bass
+401	s95x round
+402	tubro bass
+403	e bass round
+404	basic
+405	mp3k sub
+406	syn a re
+407	upright sub
+408	e bass pick
+409	thmp
+410	cat envelope
+411	tb3x3 punch
+412	uggbass
+413	e bass pick b
+414	perfect bass
+415	prodigy sub
+416	s95x sub
+417	bass thub
+418	rockelbass mid
+419	e bass dist
+420	ob sub
+421	cx tone
+422	buzz bass
+423	rockelbass short
+424	mno evo filter
+425	synth 4th hit
+426	thirty seven sub
+427	orga
+428	mud
+429	reese
+430	p.six simple
+431	s6i2 electric
+432	akubass midlong
+433	mud b
+434	wet bass
+435	cs5 square
+436	s6i2 warm
+437	elec bass
+438	boing
+439	organ dx house
+440	revy
+441	sdsv tom
+442	dr smpl warm
+443	growly
+444	organish
+445	two six 00 smoot
+446	prodigy punch
+447	flate
+448	kaa wa bell air
+449	so round
+450	de-ex solid
+451	chicago
+452	subd
+453	phonec grr
+454	overdrive
+455	prodigy square
+456	tock
+457	wlobb wobb
+458	puff
+459	rude twang
+500	blue
+501	piano s95x
+502	wurli clean
+503	mute strato
+504	cute emu flute
+505	ultra
+506	squick
+507	clav 360 phaser
+508	baby chord
+509	bg vocal
+510	skyline string
+511	octave stab
+512	trumpet breezy
+513	scary vibes
+514	sly synth chord
+515	epiano 360
+516	organ dx verb
+517	pluck hi bass
+518	pluck hybrid
+519	prophet piano
+520	epiano 360 bass
+521	houseorgan de-ex
+522	soothe string
+523	cello pluckz
+524	high pan
+525	synth micro funk
+526	dr organ chord
+527	leadaft
+528	soothe strong
+529	simple trombone
+530	cello 360
+531	flute 360 filter
+532	organ dx200 stab
+533	waterchord am7
+534	sad guitar
+535	horn 360 english
+536	strings 360
+537	house chord em7
+538	upright chord
+539	exotic pluck
+540	sky lead
+541	strings dr
+542	liquid chord em7
+543	chordy f9sus4
+544	broken bell perc
+545	pling chord
+546	s6i2 verb hit
+547	dr
+548	vox s6i2 dark
+549	sitar one shot
+550	look organ
+551	thirty 7 stab
+552	buzz delay
+553	vox s6i2 eh
+554	guzheng
+555	nt chordy
+556	fx birds tape
+557	vox s6i2 gated
+558	03d
+559	search chord

@@ -28,7 +28,7 @@ class Sample:
 
     @property
     def wav_name(self) -> str:
-        return f"{self.slot} {self.name}.wav"
+        return f"{self.slot:03d} {self.name}.wav"
 
 
 def parse_manifest(path: Path, samples_dir: Path) -> list[Sample]:

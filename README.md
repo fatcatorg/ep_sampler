@@ -7,7 +7,7 @@ official tool required to create them.
 | --- | --- |
 | **EP-133 K.O. II** | Build `.pak` backups from a sample list, or rebuild the factory sound set. |
 | **EP-1320 Medieval** | Same — `.pak` backups and the factory sound set. |
-| **EP-40 Riddim** | Build `.pak` backups from a sample list. |
+| **EP-40 Riddim** | Build `.pak` backups from a sample list, or rebuild its factory set. |
 | **EP-2350 Ting** | Generate `config.json` FX presets for the FX microphone. |
 
 It also **auto-builds the sample list for you**: scan a folder of samples, work
@@ -84,8 +84,8 @@ What do you want to build?
 
 - The device defaults to **EP-40 Riddim** (just press Enter).
 - **My manifest** builds `manifest.txt` for the chosen device.
-- **Factory sample folders** builds the EP-133 / EP-1320 factory set (the
-  EP-40 has no bundled factory set, so it re-asks for EP-133 or EP-1320).
+- **Factory sample folders** builds the EP-133 / EP-1320 factory set, or the
+  EP-40 set from its slot-numbered sample files.
 - **Auto-build manifest** scans your sample folder and writes `manifest.txt`
   for you.
 - Choosing **EP-2350 Ting** skips to its FX-config builder.
@@ -126,7 +126,7 @@ slot  group  pad  bpm  time_mode  playmode  name  file
 | `bpm` | Optional tempo for time-stretch (`-` or blank = default). |
 | `time_mode` | `off`, `bar` or `bpm`. |
 | `playmode` | `oneshot`, `key` or `legato`. |
-| `name` | Display name (becomes `<slot> <name>.wav`). |
+| `name` | Display name (becomes `<padded-slot> <name>.wav`, e.g. `001 Kick.wav`). |
 | `file` | Path to the WAV, relative to `samples_dir` (or absolute). |
 
 Example:
@@ -157,6 +157,7 @@ built-in default). Values can also be overridden on the command line.
 | `samples_dir` | Main folder of input sample WAVs. |
 | `ep133_samples_dir` | Folder holding the EP-133 default/factory samples. |
 | `ep1320_samples_dir` | Folder holding the EP-1320 default/factory samples. |
+| `ep40_samples_dir` | Folder holding the EP-40 default/factory samples. |
 | `library_dir` | Sample folder that `scan` / `manifest` index. |
 | `sample_index` | Flat-file cache of the scan (JSON). |
 | `deepseek_api_key` | DeepSeek API key (or set `DEEPSEEK_API_KEY`). |
@@ -225,7 +226,7 @@ ep-sampler manifest --randomize       # random guide + random selection
 ep-sampler manifest --list-guides     # full list with descriptions
 ```
 
-## Factory backups (EP-133 / EP-1320)
+## Factory backups (EP-133 / EP-1320 / EP-40)
 
 `build-factory` rebuilds the device's **factory sound set** from your own
 copies of the samples. It knows the factory slot of every sample — 308 for the
@@ -235,14 +236,21 @@ right device identity.
 ```bash
 ep-sampler build-factory ep133
 ep-sampler build-factory ep1320
+ep-sampler build-factory ep40        # discovers the set from slot-numbered files
 ```
+
+The EP-133 / EP-1320 sets ship as bundled name/slot lists. The EP-40 has no
+bundled list, so `build-factory ep40` derives the factory set from the
+slot-numbered filenames in `ep40_samples_dir` (e.g. `025_kick sub.wav` → slot
+25, name `KICK SUB`).
 
 It finds each factory sample by its **slot number** in the filename first (e.g.
 `025_kick sub.wav` → slot 25), falling back to a name match. It searches
 anywhere under the configured folders, including sub-folders. Search order:
 
-1. the device's own folder (`ep133_samples_dir` / `ep1320_samples_dir`)
-2. the main folder (`samples_dir`)
+1. the device's own folder (`ep133_samples_dir` / `ep1320_samples_dir` /
+   `ep40_samples_dir`)
+2. the main folder (`samples_dir`) — only for devices with a bundled list
 
 Missing samples are listed and the build continues with the rest; pass
 `--strict` to abort instead:
@@ -251,8 +259,11 @@ Missing samples are listed and the build continues with the rest; pass
 ep-sampler build-factory ep1320 --strict
 ```
 
-Factory builds use a blank project — they restore the sample library into the
-factory slots but not the factory demo patterns.
+Factory builds restore the sample library into the factory slots. For devices
+with bundled project data (currently the EP-40), they also restore the factory
+projects — pad assignments, patterns, scenes and FX settings — so the result is
+a full factory restore. Devices without bundled project data (EP-133 / EP-1320)
+fall back to a blank project.
 
 ## Ting (EP-2350 FX mic)
 

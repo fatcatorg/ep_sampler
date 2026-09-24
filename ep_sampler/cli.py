@@ -24,8 +24,10 @@ from pathlib import Path
 
 from . import __version__
 from .audio import convert_wav
-from .factory import (DEVICE_LABELS, DEVICE_ORDER, device_label, device_meta,
-                      find_samples, normalize_device)
+from .factory import (DEVICE_LABELS, DEVICE_ORDER, FACTORY_DEVICES,
+                      device_label, device_meta, find_samples,
+                      has_factory_list, load_factory_projects,
+                      normalize_device)
 from .manifest import Sample, parse_manifest
 from .manifest_build import (GUIDES, build_manifest, load_index, save_index,
                              scan_library)
@@ -38,6 +40,7 @@ DEFAULTS = {
     "samples_dir": "samples",
     "ep133_samples_dir": "",
     "ep1320_samples_dir": "",
+    "ep40_samples_dir": "",
     "library_dir": "samples",
     "sample_index": "state/sample-index.json",
     "deepseek_api_key": "",
@@ -182,15 +185,17 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
     device = normalize_device(args.device)
     cfg = load_config(args.config)
 
-    meta = device_meta(device)
-    cfg["device_name"] = meta["device_name"]
-    cfg["device_sku"] = meta["device_sku"]
-    cfg["base_sku"] = meta["base_sku"]
-    if getattr(args, "as_device", None):
-        tag = device_meta(args.as_device)
-        cfg["device_name"] = tag["device_name"]
-        cfg["device_sku"] = tag["device_sku"]
-        cfg["base_sku"] = tag["base_sku"]
+    meta = device_meta(device)  # the factory source (e.g. ep133)
+    tag = (device_meta(args.as_device)
+           if getattr(args, "as_device", None) else None)
+    target = tag or meta  # where the pak will be loaded
+
+    cfg["device_name"] = target["device_name"]
+    cfg["device_sku"] = target["device_sku"]
+    cfg["base_sku"] = target.get("base_sku", "")
+    cfg["device_version"] = target.get("device_version", cfg["device_version"])
+    cfg["pak_type"] = meta.get("pak_type", cfg["pak_type"])
+    cfg["pak_release"] = meta.get("pak_release", cfg["pak_release"])
     _merge(cfg, args, "out_dir", "project", "device_version", "audio_tool",
            "ffmpeg_bin", "sox_bin")
 
@@ -200,9 +205,12 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
     out_dir = Path(cfg["out_dir"]).expanduser()
     sounds_dir = out_dir / cfg["build_dir"] / "sounds"
 
-    # Search dirs in order: the device's own default folder, then the main one.
+    # Search dirs in order: the device's own default folder, then the main one
+    # (the main folder is only a fallback for devices with a bundled list).
     dirs: list[Path] = []
     for key in (f"{device}_samples_dir", "samples_dir"):
+        if key == "samples_dir" and not has_factory_list(device):
+            continue
         val = cfg.get(key)
         if val:
             p = Path(str(val)).expanduser()
@@ -213,14 +221,18 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
     found, missing = find_samples(device, dirs)
     total = len(found) + len(missing)
     print(f"  matched {len(found)}/{total} factory samples")
+    projects = load_factory_projects(device)
+    if projects:
+        print(f"  restoring {len(projects)} factory projects "
+              f"(pads + patterns + scenes)")
     if missing:
         print(f"missing {len(missing)}/{total} factory samples:")
         for s in missing:
             print(f"  slot {s.slot:3d}  {s.name}")
         sys.stdout.flush()
     if not found:
-        print("no factory samples found - check your sample folder paths "
-              "(ep133_samples_dir / ep1320_samples_dir / samples_dir)",
+        print(f"no factory samples found - set '{device}_samples_dir' in "
+              "config.json to the folder holding the samples",
               file=sys.stderr)
         return 1
     if missing and args.strict:
@@ -238,7 +250,7 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
     cfg["out"] = str(out)
     cfg["mode"] = "scratch"
 
-    summary = build(cfg, samples, sounds_dir)
+    summary = build(cfg, samples, sounds_dir, project_tars=projects or None)
     print(f"built {summary['out']}")
     print(f"  device {cfg['device_name']}  factory {meta['device_name']}  "
           f"project P{summary['project']:02d}  samples {summary['samples']}")
@@ -564,14 +576,13 @@ def cmd_menu(args: argparse.Namespace) -> int:
         return cmd_manifest(ns)
 
     if source == "factory":
-        # EP-40 has no bundled factory set; constrain to the two that do.
-        while device not in ("ep133", "ep1320"):
+        while device not in FACTORY_DEVICES:
             print(f"\n{device_label(device)} has no factory sample set here.")
             try:
                 device = _prompt_choice(
                     "Which factory sample set?",
-                    ["ep133", "ep1320"],
-                    [DEVICE_LABELS["ep133"], DEVICE_LABELS["ep1320"]],
+                    list(FACTORY_DEVICES),
+                    [DEVICE_LABELS[d] for d in FACTORY_DEVICES],
                     default="ep133")
             except (EOFError, KeyboardInterrupt):
                 print()

@@ -43,8 +43,9 @@ def build_meta(cfg: dict) -> bytes:
         "device_version": cfg["device_version"],
         "generated_at": timestamp_ms(),
         "author": cfg["author"],
-        "base_sku": cfg["base_sku"],
     }
+    if cfg.get("base_sku"):
+        meta["base_sku"] = cfg["base_sku"]
     return json.dumps(meta, indent=2).encode("utf-8")
 
 
@@ -140,16 +141,21 @@ def _zip_info(name: str, now: datetime) -> zipfile.ZipInfo:
     return zi
 
 
-def build_scratch(cfg: dict, samples: list[Sample], sounds_dir: Path) -> None:
-    records = _records_for(samples, sounds_dir)
-    tar_bytes = build_project_tar(records)
+def build_scratch(cfg: dict, samples: list[Sample], sounds_dir: Path,
+                  project_tars: dict[str, bytes] | None = None) -> None:
     meta_bytes = build_meta(cfg)
     now = datetime.now()
     project = cfg["project"]
 
     with zipfile.ZipFile(cfg["out"], "w", zipfile.ZIP_DEFLATED) as zf:
         # Entry order: projects -> sounds -> meta (matches Sample Tool).
-        zf.writestr(_zip_info(f"/projects/P{project:02d}.tar", now), tar_bytes)
+        if project_tars:
+            for name, data in project_tars.items():
+                zf.writestr(_zip_info(f"/projects/{name}", now), data)
+        else:
+            records = _records_for(samples, sounds_dir)
+            tar_bytes = build_project_tar(records)
+            zf.writestr(_zip_info(f"/projects/P{project:02d}.tar", now), tar_bytes)
         for s in sorted(samples, key=lambda x: x.slot):
             zf.writestr(_zip_info(f"/sounds/{s.wav_name}", now),
                         (sounds_dir / s.wav_name).read_bytes())
@@ -190,13 +196,14 @@ def build_base(cfg: dict, samples: list[Sample], sounds_dir: Path) -> None:
                 out.writestr(_zip_info(name, now), bz.read(name))
 
 
-def build(cfg: dict, samples: list[Sample], sounds_dir: Path) -> dict[str, object]:
+def build(cfg: dict, samples: list[Sample], sounds_dir: Path,
+          project_tars: dict[str, bytes] | None = None) -> dict[str, object]:
     """Build the .pak. Returns a small summary dict."""
     os.makedirs(os.path.dirname(os.path.abspath(cfg["out"])), exist_ok=True)
     if cfg["mode"] == "base":
         build_base(cfg, samples, sounds_dir)
     else:
-        build_scratch(cfg, samples, sounds_dir)
+        build_scratch(cfg, samples, sounds_dir, project_tars)
     return {
         "out": cfg["out"],
         "project": cfg["project"],

@@ -19,3 +19,6 @@ samples/*.flac
 samples/*.aif
 samples/*.aiff
 samples/*.ogg
+
+# local config (see config.json.sample)
+config.json

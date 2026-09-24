@@ -47,8 +47,9 @@ def _strip_fences(text: str) -> str:
 # Keep a single request comfortably inside the model's context window. We
 # bound both the number of files (the reply JSON is large too) and the input
 # token estimate.
-MAX_CHUNK_FILES = 5_000
-MAX_CHUNK_TOKENS = 250_000
+MAX_CHUNK_FILES = 4_000
+MAX_CHUNK_TOKENS = 200_000
+MAX_OUTPUT_TOKENS = 300_000
 
 # Transient failures get a few retries before the batch is skipped.
 MAX_RETRIES = 3
@@ -92,6 +93,42 @@ def _chunk_files(files: list[str]) -> list[list[str]]:
     return chunks
 
 
+def _snippet(text: str, limit: int = 140) -> str:
+    """A short, single-line preview of `text` for error messages."""
+    t = " ".join(text.split())
+    return t if len(t) <= limit else t[:limit] + f" ... (+{len(t) - limit} chars)"
+
+
+def _salvage_json(text: str) -> dict | list | None:
+    """Recover complete entries from a JSON reply cut off mid-stream.
+
+    DeepSeek can truncate a long reply (finish_reason="length"); instead of
+    throwing the whole batch away, keep every complete sample entry and drop
+    only the trailing, truncated one.
+    """
+    t = text.strip()
+    if t.startswith("{"):
+        closing = "]}"
+    elif t.startswith("["):
+        closing = "]"
+    else:
+        return None
+
+    idx = len(t)
+    while True:
+        idx = t.rfind("},", 0, idx)
+        if idx == -1:
+            break
+        candidate = t[:idx + 1] + closing
+        try:
+            data = json.loads(candidate)
+        except ValueError:
+            continue
+        if isinstance(data, (dict, list)):
+            return data
+    return None
+
+
 def _request_classification(file_list: str, api_key: str, model: str,
                             base_url: str, timeout: int) -> dict[str, dict]:
     """Ask DeepSeek to classify one batch; return {file: {...}}.
@@ -109,6 +146,9 @@ def _request_classification(file_list: str, api_key: str, model: str,
         # these huge JSON replies the reasoning can eat the output budget and
         # leave `content` empty ("bad JSON: line 1 column 1").
         "thinking": {"type": "disabled"},
+        # In non-thinking mode the default max output is only 8K tokens, which
+        # truncates big batches mid-JSON. Ask for plenty of headroom.
+        "max_tokens": MAX_OUTPUT_TOKENS,
         "response_format": {"type": "json_object"},
         "stream": False,
     }
@@ -142,11 +182,17 @@ def _request_classification(file_list: str, api_key: str, model: str,
         raise DeepSeekError("unexpected response shape (no text content)",
                             retryable=True)
 
+    text = _strip_fences(content)
     try:
-        data = json.loads(_strip_fences(content))
-    except ValueError as exc:
-        raise DeepSeekError(f"deepseek replied with bad JSON: {exc}",
-                            retryable=True) from exc
+        data = json.loads(text)
+    except ValueError:
+        # The reply was likely cut off mid-stream - keep every complete sample
+        # entry and drop only the truncated tail.
+        data = _salvage_json(text)
+        if data is None:
+            raise DeepSeekError(
+                f"deepseek replied with bad JSON: {_snippet(text)}",
+                retryable=True) from None
 
     samples = data.get("samples") if isinstance(data, dict) else data
     if not isinstance(samples, list):

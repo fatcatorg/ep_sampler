@@ -7,6 +7,7 @@ model strings like "deepseek-chat" (a "flash"/fast/cheap variant, if DeepSeek
 releases one, can be set via `deepseek_model`).
 """
 
+import http.client
 import json
 import time
 import urllib.error
@@ -47,9 +48,9 @@ def _strip_fences(text: str) -> str:
 # Keep a single request comfortably inside the model's context window. We
 # bound both the number of files (the reply JSON is large too) and the input
 # token estimate.
-MAX_CHUNK_FILES = 4_000
-MAX_CHUNK_TOKENS = 200_000
-MAX_OUTPUT_TOKENS = 300_000
+MAX_CHUNK_FILES = 2_000
+MAX_CHUNK_TOKENS = 150_000
+MAX_OUTPUT_TOKENS = 200_000
 
 # Transient failures get a few retries before the batch is skipped.
 MAX_RETRIES = 3
@@ -168,7 +169,9 @@ def _request_classification(file_list: str, api_key: str, model: str,
         retryable = exc.code in (429, 500, 502, 503, 504)
         raise DeepSeekError(f"DeepSeek API error {exc.code}: {detail}",
                             retryable=retryable) from exc
-    except (urllib.error.URLError, TimeoutError) as exc:
+    except (http.client.HTTPException, OSError) as exc:
+        # Server closed the connection mid-response (e.g. DeepSeek ran out of
+        # resources), a timeout, or a dropped socket - all worth retrying.
         raise DeepSeekError(f"network error: {exc}", retryable=True) from exc
     except ValueError as exc:
         raise DeepSeekError(f"bad API response: {exc}", retryable=True) from exc

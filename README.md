@@ -212,7 +212,7 @@ chords/melody, then vocals/fx).
 | 2 | TECHNO | 10 | FUNK |
 | 3 | DUB | 11 | SOUL |
 | 4 | HIP-HOP | 12 | UK GARAGE |
-| 5 | TRAP | 13 | JUNGLE |
+| 5 | HYPERPOP | 13 | JUNGLE |
 | 6 | D&B | 14 | BREAKS |
 | 7 | LO-FI | 15 | SYNTHWAVE |
 | 8 | AMBIENT | 16 | CHAOS |

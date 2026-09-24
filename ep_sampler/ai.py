@@ -105,6 +105,10 @@ def _request_classification(file_list: str, api_key: str, model: str,
             {"role": "user", "content": _PROMPT.replace("{files}", file_list)},
         ],
         "temperature": 0.2,
+        # Disable chain-of-thought: thinking mode is on by default, and for
+        # these huge JSON replies the reasoning can eat the output budget and
+        # leave `content` empty ("bad JSON: line 1 column 1").
+        "thinking": {"type": "disabled"},
         "response_format": {"type": "json_object"},
         "stream": False,
     }

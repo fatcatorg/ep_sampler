@@ -166,7 +166,13 @@ def scan_library(directory: Path, use_ai: bool, api_key: str = "",
     files: list[Path] = []
     if directory.is_dir():
         for ext in AUDIO_EXTS:
-            files.extend(sorted(directory.rglob(f"*{ext}")))
+            batch: list[Path] = []
+            for p in directory.rglob(f"*{ext}"):
+                batch.append(p)
+                n = len(files) + len(batch)
+                if n % 5000 == 0:
+                    print(f"  ... {n} sounds found")
+            files.extend(sorted(batch))
 
     if not files:
         print("  nothing to listen to here")
@@ -178,11 +184,17 @@ def scan_library(directory: Path, use_ai: bool, api_key: str = "",
     rel_of = {f: str(f.relative_to(directory)) for f in files}
 
     ai_map: dict[str, dict] = {}
-    if use_ai and files:
+    if use_ai:
         print("  asking deepseek to identify the sounds ...")
+
+        def _progress(done: int, total: int) -> None:
+            if done < total:
+                print(f"  ... identified {done}/{total} sounds")
+
         ai_map = classify_filenames(list(rel_of.values()), api_key,
                                     model=model or "deepseek-chat",
-                                    base_url=base_url or "https://api.deepseek.com")
+                                    base_url=base_url or "https://api.deepseek.com",
+                                    on_progress=_progress)
         if ai_map:
             print(f"  deepseek named {len(ai_map)}/{len(files)} sounds")
     else:

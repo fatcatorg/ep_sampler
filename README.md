@@ -153,23 +153,32 @@ ep-sampler scan --no-ai     # force filename heuristics
 The model is configurable (`deepseek_model`, default `deepseek-chat`); point it
 at DeepSeek's fast/cheap model if you prefer.
 
-### The 8 guides
+### The 16 guides
 
-Like the Ting FX styles, a guide biases which sample categories end up in the
-manifest. Randomisation picks *which* samples, while the output is always
+A guide is a **genre-based full kit** — every one pulls drums, bass, melodic
+and fx/vocals, just weighted toward its genre (nobody wants a Riddim with only
+drums). Randomisation picks *which* samples, while the output is always
 sensibly ordered — drums first (kicks → snares → hats → percussion), then bass,
 then chords/melody, then vocals/fx.
 
 | # | Guide | Essence |
 | --- | --- | --- |
-| 1 | FULL KIT | balanced — a bit of everything |
-| 2 | DRUMS | drum-focused |
-| 3 | BASS | bass-forward |
-| 4 | MELODIC | chords, melodies, bass |
-| 5 | DUB | heavy bass, fx and percussion |
-| 6 | TECHNO | kicks, hats, claps, percussion |
-| 7 | VOCAL | vocals and fx forward |
-| 8 | CHAOS | everything, random but grouped |
+| 1 | HOUSE | four-on-the-floor — kick, clap, hats, bass, chords |
+| 2 | TECHNO | driving — kicks, hats, percussion, bass |
+| 3 | DUB | sound-system — heavy bass, fx, percussion |
+| 4 | HIP-HOP | boom-bap — kick, snare, hats, bass, melodic |
+| 5 | TRAP | 808s and rolls — kick, hats, snares, bass, fx |
+| 6 | D&B | breaks — kick, snares, hats, bass, fx |
+| 7 | LO-FI | mellow — soft drums, chords and melody |
+| 8 | AMBIENT | textural — pads, melody, bass, light percussion |
+| 9 | REGGAE | one-drop — skank chords, bass, percussion |
+| 10 | FUNK | groove — kick, snare, clap, bass, melody |
+| 11 | SOUL | warm — soft drums, chords, melody, vocals |
+| 12 | UK GARAGE | 2-step — swung hats, bass, chords |
+| 13 | JUNGLE | amen — kick, snares, hats, bass, fx |
+| 14 | BREAKS | breakbeat — kick, snares, hats, bass, melody |
+| 15 | SYNTHWAVE | retro — synth bass, pads, arps, drums |
+| 16 | CHAOS | everything, randomly picked but still grouped |
 
 ```bash
 ep-sampler manifest --guide techno --randomize --seed 7

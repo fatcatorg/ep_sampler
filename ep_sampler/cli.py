@@ -396,7 +396,7 @@ def cmd_manifest(args: argparse.Namespace) -> int:
     guide = args.guide
     if guide is None and args.randomize:
         guide = random.choice(GUIDES)["key"]
-    guide = guide or "full"
+    guide = guide or GUIDES[0]["key"]
 
     if args.randomize:
         seed = args.seed if args.seed is not None \

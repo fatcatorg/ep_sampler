@@ -10,6 +10,7 @@ matched by name (case-insensitive, ignoring punctuation/spaces) so a factory
 sample named "BATTLE KIK" matches `battle_kik.wav`, `BATTLE KIK.WAV`, etc.
 """
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -111,33 +112,54 @@ def _norm(text: str) -> str:
     return "".join(c for c in text.lower() if c.isascii() and c.isalnum())
 
 
-def build_index(dirs: list[Path]) -> dict[str, Path]:
-    """Map normalised file stem -> path, scanning `dirs` recursively.
+# Slot number followed by a separator (space/underscore/etc.) or directly by
+# a letter (some files are named like '198FINAL BREATH.wav').
+_SLOT_RE = re.compile(r"^(\d{1,3})(?:[\s._\-]+|(?=[A-Za-z]))")
+
+
+def _leading_slot(stem: str) -> int | None:
+    """Return the leading slot number in a stem like '25_kick sub'."""
+    m = _SLOT_RE.match(stem)
+    return int(m.group(1)) if m else None
+
+
+def build_index(dirs: list[Path]) -> tuple[dict[str, Path], dict[int, Path]]:
+    """Map normalised stem -> path and slot number -> path, scanning `dirs`.
 
     Directories are searched in order; the first match wins, and `.wav` is
-    preferred over other audio extensions within a directory."""
-    index: dict[str, Path] = {}
+    preferred over other audio extensions within a directory. Filenames that
+    begin with a slot number (e.g. `25_kick sub.wav`) are also indexed by
+    that slot - the reliable way to pair factory samples with their files.
+    """
+    by_name: dict[str, Path] = {}
+    by_slot: dict[int, Path] = {}
     for d in dirs:
         if not d.is_dir():
             continue
         for ext in AUDIO_EXTS:
             for path in sorted(d.rglob(f"*{ext}")):
                 key = _norm(path.stem)
-                if key and key not in index:
-                    index[key] = path
-    return index
+                if key and key not in by_name:
+                    by_name[key] = path
+                slot = _leading_slot(path.stem)
+                if slot is not None and slot not in by_slot:
+                    by_slot[slot] = path
+    return by_name, by_slot
 
 
 def find_samples(device: str, dirs: list[Path]) -> tuple[list, list]:
     """Return (found, missing) for the device's factory sound set.
 
     `found` is a list of (FactorySound, Path); `missing` a list of
-    FactorySound. `dirs` are searched in the given order."""
-    index = build_index(dirs)
+    FactorySound. `dirs` are searched in the given order. A file is matched
+    by its leading slot number first (e.g. `25_kick sub.wav` -> slot 25),
+    falling back to a normalised name match.
+    """
+    by_name, by_slot = build_index(dirs)
     found: list[tuple[FactorySound, Path]] = []
     missing: list[FactorySound] = []
     for sound in load_factory(device):
-        path = index.get(_norm(sound.name))
+        path = by_slot.get(sound.slot) or by_name.get(_norm(sound.name))
         if path:
             found.append((sound, path))
         else:

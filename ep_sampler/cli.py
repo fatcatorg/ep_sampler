@@ -144,14 +144,15 @@ def _convert_samples(samples: list[Sample], sounds_dir: Path, cfg: dict) -> bool
         extra = cfg.get("sox_extra_args") or []
     else:
         extra = cfg.get("ffmpeg_extra_args") or []
-    for s in samples:
+    total = len(samples)
+    for i, s in enumerate(samples, 1):
         if not s.src.is_file():
             print(f"sample file not found: {s.src} (slot {s.slot})",
                   file=sys.stderr)
             return False
         dst = sounds_dir / s.wav_name
         if _needs_conversion(s.src, dst):
-            print(f"converting {s.src.name} -> {s.wav_name}")
+            print(f"  [{i}/{total}] converting {s.src.name} -> {s.wav_name}")
             convert_wav(s.src, dst, tool=tool,
                         ffmpeg_bin=cfg["ffmpeg_bin"], sox_bin=cfg["sox_bin"],
                         extra_args=extra)
@@ -174,8 +175,16 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
     cfg["device_name"] = meta["device_name"]
     cfg["device_sku"] = meta["device_sku"]
     cfg["base_sku"] = meta["base_sku"]
+    if getattr(args, "as_device", None):
+        tag = device_meta(args.as_device)
+        cfg["device_name"] = tag["device_name"]
+        cfg["device_sku"] = tag["device_sku"]
+        cfg["base_sku"] = tag["base_sku"]
     _merge(cfg, args, "out_dir", "project", "device_version", "audio_tool",
            "ffmpeg_bin", "sox_bin")
+
+    print(f"building {meta['device_name']} factory pack "
+          f"for {cfg['device_name']} ...")
 
     out_dir = Path(cfg["out_dir"]).expanduser()
     sounds_dir = out_dir / cfg["build_dir"] / "sounds"
@@ -189,8 +198,10 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
             if p.is_dir():
                 dirs.append(p)
 
+    print("  searching: " + ", ".join(str(d) for d in dirs))
     found, missing = find_samples(device, dirs)
     total = len(found) + len(missing)
+    print(f"  matched {len(found)}/{total} factory samples")
     if missing:
         print(f"missing {len(missing)}/{total} factory samples:")
         for s in missing:
@@ -218,8 +229,8 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
 
     summary = build(cfg, samples, sounds_dir)
     print(f"built {summary['out']}")
-    print(f"  device {meta['device_name']}  project P{summary['project']:02d}  "
-          f"samples {summary['samples']}")
+    print(f"  device {cfg['device_name']}  factory {meta['device_name']}  "
+          f"project P{summary['project']:02d}  samples {summary['samples']}")
     if missing:
         print(f"  {len(missing)} factory samples not found and skipped")
     return 0
@@ -556,7 +567,7 @@ def cmd_menu(args: argparse.Namespace) -> int:
         ns = argparse.Namespace(
             config=args.config, device=device, out_dir=None, out=None,
             project=None, device_version=None, audio_tool=None,
-            ffmpeg_bin=None, sox_bin=None, strict=False)
+            ffmpeg_bin=None, sox_bin=None, strict=False, as_device=None)
         return cmd_build_factory(ns)
 
     # manifest source - set the target device identity for the build
@@ -715,6 +726,8 @@ def build_parser() -> argparse.ArgumentParser:
     f.add_argument("--sox-bin", default=None)
     f.add_argument("--strict", action="store_true",
                    help="fail if any factory sample is missing")
+    f.add_argument("--as", dest="as_device", default=None,
+                   help="tag the pak as a different device (e.g. --as ep40)")
     f.set_defaults(func=cmd_build_factory)
 
     a = sub.add_parser("add", help="append one sample to the manifest")

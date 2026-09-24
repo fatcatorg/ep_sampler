@@ -270,37 +270,53 @@ def _apportion(weights: dict[str, float], capacity: int) -> dict[str, int]:
 
 
 def build_manifest(samples: list[SampleRec], guide_key: str,
-                   seed: int | None = None, max_total: int = 48) -> list[dict]:
+                   seed: int | None = None, max_total: int = 48,
+                   shuffle: bool | None = None) -> list[dict]:
     """Return manifest rows (one per pad), sensibly ordered.
 
     A guide weights which categories to include, `seed` randomises which
     concrete samples are picked, and rows are ordered by category then name.
+    `shuffle` overrides the guide's own shuffle flag (used to force a
+    different sample selection per programme).
     """
     guide = _guide_by_key(guide_key)
     rng = random.Random(seed)
+    do_shuffle = guide["shuffle"] if shuffle is None else shuffle
     max_total = min(max_total, 48)  # 4 groups x 12 pads
 
     by_cat: dict[str, list[SampleRec]] = {}
     for s in samples:
         by_cat.setdefault(s.category, []).append(s)
 
-    # Apportion pads across groups by their category weights, then within each
-    # group across its categories - capped at 12 pads per group.
+    # Fill every populated group up to 12 pads (the hardware limit), splitting
+    # each group across its categories by the guide's weights. If max_total is
+    # lower than a full 48-pad kit, trim pads from the least-weighted groups.
     weights = guide["weights"]
-    group_weight: dict[str, float] = {}
-    for c, w in weights.items():
-        if w > 0:
-            g = GROUP_OF[c]
-            group_weight[g] = group_weight.get(g, 0) + w
-
-    group_cap = _apportion(group_weight, max_total)
-    picks: dict[str, int] = {}
-    for g, cap in group_cap.items():
-        if cap > 12:
-            cap = 12
+    group_cats: dict[str, dict[str, float]] = {}
+    for g in "ABCD":
         cats = {c: weights[c] for c in CATEGORIES
                 if weights.get(c, 0) > 0 and GROUP_OF[c] == g}
-        for c, n in _apportion(cats, cap).items():
+        if cats:
+            group_cats[g] = cats
+
+    n_groups = len(group_cats)
+    target = min(max_total, n_groups * 12)
+    group_cap: dict[str, int] = {g: 12 for g in group_cats}
+    surplus = n_groups * 12 - target
+    if surplus > 0:
+        for g in sorted(group_cats,
+                        key=lambda g: sum(group_cats[g].values())):
+            if surplus <= 0:
+                break
+            remove = min(12, surplus)
+            group_cap[g] -= remove
+            surplus -= remove
+
+    picks: dict[str, int] = {}
+    for g, cap in group_cap.items():
+        if cap <= 0:
+            continue
+        for c, n in _apportion(group_cats[g], cap).items():
             picks[c] = n
 
     # Choose which samples, grouped and ordered.
@@ -309,7 +325,7 @@ def build_manifest(samples: list[SampleRec], guide_key: str,
         pool = sorted(by_cat.get(c, []), key=lambda s: s.name.lower())
         if not pool:
             continue
-        if guide["shuffle"]:
+        if do_shuffle:
             rng.shuffle(pool)
         chosen[c] = pool[:n]
 
@@ -333,3 +349,19 @@ def build_manifest(samples: list[SampleRec], guide_key: str,
                 "name": s.name, "file": s.file,
             })
     return rows
+
+
+def build_kits(samples: list[SampleRec], guide_key: str,
+               seed: int | None = None, count: int = 8,
+               max_total: int = 48) -> list[list[dict]]:
+    """Generate `count` kits (one manifest's worth each) with sequential
+    seeds. When generating more than one, sample selection is shuffled so
+    each programme gets a different random set of samples."""
+    force_shuffle = count > 1
+    kits: list[list[dict]] = []
+    for i in range(count):
+        s = (seed + i) if seed is not None else None
+        kits.append(build_manifest(samples, guide_key, seed=s,
+                                   max_total=max_total,
+                                   shuffle=True if force_shuffle else None))
+    return kits

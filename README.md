@@ -100,7 +100,7 @@ below (so it can be scripted).
 | `ep-sampler build` | Convert `manifest.txt`'s samples and build the `.pak`. |
 | `ep-sampler build-factory ep133` | Build a `.pak` from the EP-133/EP-1320 factory sample set. |
 | `ep-sampler scan` | Scan the sample library and cache what it finds. |
-| `ep-sampler manifest` | Auto-build `manifest.txt` from the library. |
+| `ep-sampler manifest` | Auto-build a backup from the library — 8 programmes by default (see below). |
 | `ep-sampler ting` | Build an EP-2350 Ting `config.json`. |
 | `ep-sampler add <file.wav>` | Append one sample to `manifest.txt`. |
 | `ep-sampler inspect <file.pak>` | List a `.pak`'s metadata, sounds and pads. |
@@ -181,14 +181,25 @@ tool generate it:
 
 ```bash
 ep-sampler scan                     # scan library_dir and cache the result
-ep-sampler manifest --guide techno  # write manifest.txt from the cached scan
+ep-sampler manifest --guide techno  # build a .pak (8 programmes by default)
+ep-sampler manifest --programmes 1  # write manifest.txt only
 ep-sampler manifest --rescan        # rescan first, then build
+ep-sampler manifest --samples 384   # ~384 samples, split evenly across 8 kits
+ep-sampler manifest --folder Drums --folder Bass   # only use these sub-folders
 ```
 
 - `scan` walks `library_dir` recursively, classifies every file, and writes a
   flat JSON index to `sample_index` (no database). Re-running `scan` only
   classifies new files - everything already indexed is reused.
-- `manifest` reads that index by default and writes `manifest.txt`.
+- `manifest` reads that index by default, writes `manifest.txt` (the first
+  kit, for reference) and builds a `.pak` with **8 programmes** — each a full
+  kit: drums on group A, bass on B, chords/melody on C, vocals/fx on D, with a
+  different random selection per programme. Pass `--programmes 1` to write
+  only `manifest.txt`, or `--programmes N` for a different count.
+- `--samples N` sets the total number of samples to load, split evenly across
+  the programmes (each programme fills up to 48 pads).
+- `--folder NAME` (repeatable) restricts the selection to samples under the
+  given sub-folders of `library_dir`.
 
 ### Sample classification (DeepSeek)
 

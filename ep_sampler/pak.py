@@ -142,7 +142,8 @@ def _zip_info(name: str, now: datetime) -> zipfile.ZipInfo:
 
 
 def build_scratch(cfg: dict, samples: list[Sample], sounds_dir: Path,
-                  project_tars: dict[str, bytes] | None = None) -> None:
+                  project_tars: dict[str, bytes] | None = None,
+                  kits: list[list[Sample]] | None = None) -> None:
     meta_bytes = build_meta(cfg)
     now = datetime.now()
     project = cfg["project"]
@@ -152,6 +153,11 @@ def build_scratch(cfg: dict, samples: list[Sample], sounds_dir: Path,
         if project_tars:
             for name, data in project_tars.items():
                 zf.writestr(_zip_info(f"/projects/{name}", now), data)
+        elif kits:
+            for i, kit in enumerate(kits, 1):
+                records = _records_for(kit, sounds_dir)
+                zf.writestr(_zip_info(f"/projects/P{i:02d}.tar", now),
+                            build_project_tar(records))
         else:
             records = _records_for(samples, sounds_dir)
             tar_bytes = build_project_tar(records)
@@ -197,13 +203,14 @@ def build_base(cfg: dict, samples: list[Sample], sounds_dir: Path) -> None:
 
 
 def build(cfg: dict, samples: list[Sample], sounds_dir: Path,
-          project_tars: dict[str, bytes] | None = None) -> dict[str, object]:
+          project_tars: dict[str, bytes] | None = None,
+          kits: list[list[Sample]] | None = None) -> dict[str, object]:
     """Build the .pak. Returns a small summary dict."""
     os.makedirs(os.path.dirname(os.path.abspath(cfg["out"])), exist_ok=True)
     if cfg["mode"] == "base":
         build_base(cfg, samples, sounds_dir)
     else:
-        build_scratch(cfg, samples, sounds_dir, project_tars)
+        build_scratch(cfg, samples, sounds_dir, project_tars, kits)
     return {
         "out": cfg["out"],
         "project": cfg["project"],

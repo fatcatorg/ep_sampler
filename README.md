@@ -1,52 +1,69 @@
-# ep_sampler
+# ep-sampler
 
-ep_sampler builds a list of sample WAV files into a single `.ppak` backup file
-that the official Teenage Engineering **EP Sample Tool** can restore onto an
-**EP-133 K.O. II** (and, via `device_sku`, the EP-1320 / EP-40). Point it at a
-folder of samples, describe where they go in `manifest.txt`, and it produces
-the exact file you would otherwise get from the tool's "Backup" button — only
-built from *your* samples. It also generates `config.json` effect presets for
-the **EP-2350 Ting** FX microphone — including a randomizer to go wild with the
-four FX buttons.
+Build Teenage Engineering EP-series backup files from your own samples — no
+official tool required to create them.
 
-## Pipeline
+| Device | What ep-sampler does for it |
+| --- | --- |
+| **EP-133 K.O. II** | Build `.ppak` backups from a sample list, or rebuild the factory sound set. |
+| **EP-1320 Medieval** | Same — `.ppak` backups and the factory sound set. |
+| **EP-40 Riddim** | Build `.ppak` backups from a sample list. |
+| **EP-2350 Ting** | Generate `config.json` FX presets for the FX microphone. |
 
-```mermaid
-flowchart LR
-    A[WAV files in samples/] --> B[manifest.txt]
-    B --> C[convert: 44.1 kHz stereo 16-bit]
-    C --> D[out/build/sounds/]
-    D --> E[assemble .ppak]
-    E --> F[out/project-01.ppak]
-    F --> G[EP Sample Tool: Load / restore]
-```
+It also **auto-builds the sample list for you**: scan a folder of samples, work
+out what they are (optionally with the DeepSeek API), and write `manifest.txt`
+using one of 16 genre-based "full kit" guides.
 
 ## Requirements
 
-- Python 3.10+ (standard library only)
-- `ffmpeg` (or `sox`) for audio conversion
+- **Python 3.10+** — the tool uses only the standard library.
+- **ffmpeg** (or **sox**) — used to convert samples to the format the EP
+  accepts.
+- Optional: a **DeepSeek API key** for AI sample classification (see below).
 
 ```bash
-ffmpeg -version
+ffmpeg -version      # verify ffmpeg is installed
+```
+
+## Install
+
+```bash
+# optional, but gives you the shorter `ep-sampler` command:
+pip install -e .
+
+# otherwise run the package directly from the repo:
+python -m ep_sampler --help
 ```
 
 ## Quick start
 
-```bash
-# 1. put WAVs in samples/ and list them in manifest.txt, then:
-python -m ep_sampler build
+**1. Build a backup from your samples.** Put WAVs in `samples/`, list them in
+`manifest.txt`, then:
 
-# or install once and use the console script:
-pip install -e .
-ep-sampler build
+```bash
+python -m ep_sampler build          # or: ep-sampler build
 ```
 
-The result is `out/project-01.ppak`. In the EP Sample Tool use **Load** /
-**Upload** and point it at that file.
+The result is `out/project-01.ppak`. In the official **EP Sample Tool**, use
+**Load** / **Upload** and point it at that file.
+
+**2. Rebuild a device's factory sound set** (EP-133 / EP-1320) from your own
+copies of the samples:
+
+```bash
+ep-sampler build-factory ep133
+ep-sampler build-factory ep1320
+```
+
+**3. Generate FX presets for the Ting microphone:**
+
+```bash
+ep-sampler ting --randomize
+```
 
 ## Interactive menu
 
-Run `ep-sampler` with no arguments and it walks you through two questions:
+Run `ep-sampler` with no arguments and it walks you through the choices:
 
 ```text
 $ ep-sampler
@@ -61,67 +78,99 @@ Which EP device should we build a backup for?
 What do you want to build?
   [1] My manifest (manifest.txt) (default)
   [2] Factory sample folders
+  [3] Auto-build manifest from library
 >
 ```
 
-- The device defaults to the **EP-40 Riddim** (press Enter).
-- "My manifest" builds `manifest.txt` for the chosen device.
-- "Factory sample folders" builds the chosen device's factory set — the EP-40
-  has no bundled factory set, so picking it re-asks for EP-133 or EP-1320.
-- Picking **EP-2350 Ting** skips straight to its FX-config builder and asks
-  whether to randomise the presets.
+- The device defaults to **EP-40 Riddim** (just press Enter).
+- **My manifest** builds `manifest.txt` for the chosen device.
+- **Factory sample folders** builds the EP-133 / EP-1320 factory set (the
+  EP-40 has no bundled factory set, so it re-asks for EP-133 or EP-1320).
+- **Auto-build manifest** scans your sample folder and writes `manifest.txt`
+  for you.
+- Choosing **EP-2350 Ting** skips to its FX-config builder.
 
-The same flows run **non-interactively** via the subcommands below, so they can
-be scripted (startup arguments instead of a menu).
+Everything the menu does can also be run non-interactively with the subcommands
+below (so it can be scripted).
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| `ep-sampler build` | Convert every sample and build the `.ppak`. |
-| `ep-sampler build-factory ep133` | Build a `.ppak` from the EP-133 factory sample set. |
-| `ep-sampler ting` | Build an EP-2350 Ting `config.json` (FX mic). |
-| `ep-sampler add samples/kick.wav` | Append one sample to `manifest.txt` (auto slot/pad/name). |
-| `ep-sampler inspect out/project-01.ppak` | List a built `.ppak`'s metadata, sounds and pad bindings. |
+| `ep-sampler build` | Convert `manifest.txt`'s samples and build the `.ppak`. |
+| `ep-sampler build-factory ep133` | Build a `.ppak` from the EP-133/EP-1320 factory sample set. |
+| `ep-sampler scan` | Scan the sample library and cache what it finds. |
+| `ep-sampler manifest` | Auto-build `manifest.txt` from the library. |
+| `ep-sampler ting` | Build an EP-2350 Ting `config.json`. |
+| `ep-sampler add <file.wav>` | Append one sample to `manifest.txt`. |
+| `ep-sampler inspect <file.ppak>` | List a `.ppak`'s metadata, sounds and pads. |
 
-```bash
-# add with explicit placement
-ep-sampler add samples/snare.wav --slot 102 --group B --pad 4 --bpm 134 --time-mode bpm
+Add `--help` to any command for its full options (for example
+`ep-sampler manifest --help`). Note that `--config <path>` goes **before** the
+subcommand: `ep-sampler --config config.json build`.
 
-# build with overrides (or edit config.json)
-ep-sampler build --project 2 --mode scratch --out-dir out
+## The manifest file
+
+`manifest.txt` is one sample per line, columns separated by **TAB** (`#` starts
+a comment):
+
+```
+slot  group  pad  bpm  time_mode  playmode  name  file
 ```
 
-## Factory backups
+| Column | Meaning |
+| --- | --- |
+| `slot` | Sample slot `1..999` (each must be unique). |
+| `group` | Pad group `A`, `B`, `C` or `D`. |
+| `pad` | Pad `1..12` — see the pad-numbering table below. |
+| `bpm` | Optional tempo for time-stretch (`-` or blank = default). |
+| `time_mode` | `off`, `bar` or `bpm`. |
+| `playmode` | `oneshot`, `key` or `legato`. |
+| `name` | Display name (becomes `<slot> <name>.wav`). |
+| `file` | Path to the WAV, relative to `samples_dir` (or absolute). |
 
-`build-factory` rebuilds the device's **factory sound set** from your own
-copies of the samples. It knows the factory slot for every sample on the
-EP-133 (308 samples) and the EP-1320 (220 samples), and writes each into its
-original slot with the correct device identity in `meta.json`.
+Example:
 
-```bash
-ep-sampler build-factory ep133
-ep-sampler build-factory ep1320
+```
+100	A	10	120	off	oneshot	Kick	kick.wav
+101	A	11	134	bpm	oneshot	Snare	snare.wav
 ```
 
-It looks for each factory sample **by name** (case-insensitive, ignoring
-spaces/punctuation) anywhere under the configured folders — including
-sub-folders — so a sample named `BATTLE KIK` matches
-`some/where/battle_kik.wav`. Search order:
+### Pad numbering
 
-1. the device's own folder (`ep133_samples_dir` / `ep1320_samples_dir`)
-2. the main folder (`samples_dir`)
+This project uses the **TAR** convention (bottom-up), matching the files inside
+the backup:
 
-Every sample that can't be found is listed, and the build continues with the
-rest. Pass `--strict` to abort instead when anything is missing:
+| pad | label | pad | label | pad | label | pad | label |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | `.` | 4 | `1` | 7 | `4` | 10 | `7` |
+| 2 | `0` | 5 | `2` | 8 | `5` | 11 | `8` |
+| 3 | `ENT` | 6 | `3` | 9 | `6` | 12 | `9` |
 
-```bash
-ep-sampler build-factory ep1320 --strict
-```
+## Configuration
 
-Factory builds use a **blank project** — they restore the sample library into
-the factory slots but do not reproduce the factory demo patterns (those are
-sequencer data, not part of the known `.ppak` sound format).
+All settings live in `config.json` (every key is optional and falls back to a
+built-in default). Values can also be overridden on the command line.
+
+| Key | Meaning |
+| --- | --- |
+| `samples_dir` | Main folder of input sample WAVs. |
+| `ep133_samples_dir` | Folder holding the EP-133 default/factory samples. |
+| `ep1320_samples_dir` | Folder holding the EP-1320 default/factory samples. |
+| `library_dir` | Sample folder that `scan` / `manifest` index. |
+| `sample_index` | Flat-file cache of the scan (JSON). |
+| `deepseek_api_key` | DeepSeek API key (or set `DEEPSEEK_API_KEY`). |
+| `deepseek_model` | DeepSeek model name (default `deepseek-chat`). |
+| `deepseek_base_url` | DeepSeek API endpoint. |
+| `manifest_file` | The sample list. |
+| `out_dir` | Where output files go. |
+| `project` | Which project (1..99) the backup carries. |
+| `mode` | `scratch` (build from the format) or `base` (patch a real backup). |
+| `base_pak` | A real Sample Tool backup, used when `mode = "base"`. |
+| `device_sku` / `base_sku` | `TE032AS001` for K.O. II / riddim. |
+| `device_version` | Your device's OS version (shown in Sample Tool). |
+| `audio_tool` | `ffmpeg` or `sox`. |
+| `ffmpeg_extra_args` | Extra converter args, e.g. `["-af", "loudnorm"]`. |
 
 ## Auto-building the manifest
 
@@ -129,16 +178,16 @@ Instead of hand-writing `manifest.txt`, scan a folder of samples and let the
 tool generate it:
 
 ```bash
-ep-sampler scan                    # scan library_dir and cache the index
-ep-sampler manifest --guide drums  # build manifest.txt from the cached index
-ep-sampler manifest --rescan       # rescan first, then build
+ep-sampler scan                     # scan library_dir and cache the result
+ep-sampler manifest --guide techno  # write manifest.txt from the cached scan
+ep-sampler manifest --rescan        # rescan first, then build
 ```
 
-- `scan` walks `library_dir` (recursively), classifies every file, and writes a
-  flat JSON index to `sample_index` — no database.
+- `scan` walks `library_dir` recursively, classifies every file, and writes a
+  flat JSON index to `sample_index` (no database).
 - `manifest` reads that index by default and writes `manifest.txt`.
 
-### Classification (DeepSeek)
+### Sample classification (DeepSeek)
 
 Classification uses the **DeepSeek API** when a key is present, and falls back
 to filename keywords otherwise. Only filenames are sent to the API — never
@@ -146,67 +195,82 @@ audio.
 
 ```bash
 export DEEPSEEK_API_KEY=sk-...
-ep-sampler scan --ai        # force DeepSeek classification
-ep-sampler scan --no-ai     # force filename heuristics
+ep-sampler scan --ai      # force DeepSeek classification
+ep-sampler scan --no-ai   # force filename keywords
 ```
-
-The model is configurable (`deepseek_model`, default `deepseek-chat`); point it
-at DeepSeek's fast/cheap model if you prefer.
 
 ### The 16 guides
 
 A guide is a **genre-based full kit** — every one pulls drums, bass, melodic
-and fx/vocals, just weighted toward its genre (nobody wants a Riddim with only
-drums). Randomisation picks *which* samples, while the output is always
-sensibly ordered — drums first (kicks → snares → hats → percussion), then bass,
-then chords/melody, then vocals/fx.
+and fx/vocals, just weighted toward its genre. Randomisation picks *which*
+samples, while the output stays sensibly ordered (drums first, then bass, then
+chords/melody, then vocals/fx).
 
-| # | Guide | Essence |
-| --- | --- | --- |
-| 1 | HOUSE | four-on-the-floor — kick, clap, hats, bass, chords |
-| 2 | TECHNO | driving — kicks, hats, percussion, bass |
-| 3 | DUB | sound-system — heavy bass, fx, percussion |
-| 4 | HIP-HOP | boom-bap — kick, snare, hats, bass, melodic |
-| 5 | TRAP | 808s and rolls — kick, hats, snares, bass, fx |
-| 6 | D&B | breaks — kick, snares, hats, bass, fx |
-| 7 | LO-FI | mellow — soft drums, chords and melody |
-| 8 | AMBIENT | textural — pads, melody, bass, light percussion |
-| 9 | REGGAE | one-drop — skank chords, bass, percussion |
-| 10 | FUNK | groove — kick, snare, clap, bass, melody |
-| 11 | SOUL | warm — soft drums, chords, melody, vocals |
-| 12 | UK GARAGE | 2-step — swung hats, bass, chords |
-| 13 | JUNGLE | amen — kick, snares, hats, bass, fx |
-| 14 | BREAKS | breakbeat — kick, snares, hats, bass, melody |
-| 15 | SYNTHWAVE | retro — synth bass, pads, arps, drums |
-| 16 | CHAOS | everything, randomly picked but still grouped |
+| # | Guide | # | Guide |
+| --- | --- | --- | --- |
+| 1 | HOUSE | 9 | REGGAE |
+| 2 | TECHNO | 10 | FUNK |
+| 3 | DUB | 11 | SOUL |
+| 4 | HIP-HOP | 12 | UK GARAGE |
+| 5 | TRAP | 13 | JUNGLE |
+| 6 | D&B | 14 | BREAKS |
+| 7 | LO-FI | 15 | SYNTHWAVE |
+| 8 | AMBIENT | 16 | CHAOS |
 
 ```bash
 ep-sampler manifest --guide techno --randomize --seed 7
-ep-sampler manifest --randomize      # random guide + random selection
-ep-sampler manifest --list-guides
+ep-sampler manifest --randomize       # random guide + random selection
+ep-sampler manifest --list-guides     # full list with descriptions
 ```
+
+## Factory backups (EP-133 / EP-1320)
+
+`build-factory` rebuilds the device's **factory sound set** from your own
+copies of the samples. It knows the factory slot of every sample — 308 for the
+EP-133, 220 for the EP-1320 — and puts each back in its original slot with the
+right device identity.
+
+```bash
+ep-sampler build-factory ep133
+ep-sampler build-factory ep1320
+```
+
+It finds each factory sample **by name** (case-insensitive, ignoring spaces and
+punctuation) anywhere under the configured folders, including sub-folders — so
+`BATTLE KIK` matches `some/where/battle_kik.wav`. Search order:
+
+1. the device's own folder (`ep133_samples_dir` / `ep1320_samples_dir`)
+2. the main folder (`samples_dir`)
+
+Missing samples are listed and the build continues with the rest; pass
+`--strict` to abort instead:
+
+```bash
+ep-sampler build-factory ep1320 --strict
+```
+
+Factory builds use a blank project — they restore the sample library into the
+factory slots but not the factory demo patterns.
 
 ## Ting (EP-2350 FX mic)
 
-The Ting is a standalone handheld FX microphone, not a sampler. It mounts a
-tiny disk and reads a single `config.json` that defines the four FX buttons
-(ECHO, SPRING, PIXIE, ROBOT) as effect chains with optional handle / shake /
-lfo / trigger modulation, plus up to four sample triggers.
+The Ting is a handheld FX microphone, not a sampler. It mounts a tiny disk and
+reads a single `config.json` defining the four FX buttons as effect chains plus
+optional handle / shake / lfo / trigger modulation.
 
 ```bash
 ep-sampler ting                       # factory-style presets (ECHO/SPRING/PIXIE/ROBOT)
 ep-sampler ting --randomize           # 4 random FX styles
-ep-sampler ting --fx 1,3,5,7          # pick specific styles; rest filled randomly
-ep-sampler ting --list-fx             # show the 8 styles
+ep-sampler ting --fx 1,3,5,7          # pick specific styles, rest filled randomly
 ep-sampler ting --samples             # include a samples section (1.wav..4.wav)
+ep-sampler ting --list-fx             # list the styles
 ```
 
 ### The 8 FX styles
 
-Eight named "types" capture the essence of Teenage Engineering's instant FX.
-Each is a fixed effect chain (its character), with every parameter randomised
-inside that style's own ranges — so each pack is different but still sounds
-like what it says on the tin:
+Each style is a fixed effect chain (its character) with every parameter
+randomised inside its own ranges — the FX is always pushed in its direction,
+but each pack is different:
 
 | # | Style | Essence |
 | --- | --- | --- |
@@ -219,147 +283,35 @@ like what it says on the tin:
 | 7 | RADIO | broken radio — bandpassed lo-fi static |
 | 8 | GLITCH | glitch / stutter — atonal chaos |
 
-`--fx 1,3,5,7` assigns those styles to slots 0–3 in order; give fewer and the
-remaining slots are topped up with random styles from the rest. All parameter
-values stay inside the ranges documented in the official guide, with
-`handle` / `shake` / `lfo` / `trigger` modulation wired into each style.
-
 Output goes to `out/ting/config.json` (override with `--out`); copy it onto the
 `tingdisk` volume and restart the mic.
 
-## Manifest format
-
-One sample per line, columns separated by **TAB** (`#` starts a comment):
-
-```
-slot  group  pad  bpm  time_mode  playmode  name  file
-```
-
-| Column | Meaning |
-| --- | --- |
-| `slot` | Sample slot `1..999`. Each must be unique. |
-| `group` | Pad group `A`, `B`, `C` or `D`. |
-| `pad` | Pad `1..12` (TAR `pNN` convention, bottom-up — table below). |
-| `bpm` | Optional tempo for time-stretch (`-` or blank = leave the 120.0 default). |
-| `time_mode` | `off`, `bar` or `bpm`. |
-| `playmode` | `oneshot`, `key` or `legato`. |
-| `name` | Display name, ≤20 chars, no spaces (becomes `<slot> <name>.wav`). |
-| `file` | Path to the WAV, relative to `samples_dir` (or absolute). |
-
-Pad numbering (bottom-up, matching the `pads/<group>/pNN` files inside the TAR):
-
-| pad | label | pad | label | pad | label | pad | label |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | `.` | 4 | `1` | 7 | `4` | 10 | `7` |
-| 2 | `0` | 5 | `2` | 8 | `5` | 11 | `8` |
-| 3 | `ENT` | 6 | `3` | 9 | `6` | 12 | `9` |
-
-Example `manifest.txt`:
-
-```
-100	A	10	120	off	oneshot	Kick	kick.wav
-101	A	11	134	bpm	oneshot	Snare	snare.wav
-```
-
-## Configuration
-
-Defaults live in `config.json` (all keys optional — missing keys fall back to
-built-in defaults). Every key can also be overridden on the command line.
-
-| Key | Meaning |
-| --- | --- |
-| `samples_dir` | Main folder of input sample WAVs. |
-| `ep133_samples_dir` | Folder holding the EP-133 default/factory samples. |
-| `ep1320_samples_dir` | Folder holding the EP-1320 default/factory samples. |
-| `library_dir` | Sample folder that `scan` / `manifest` index. |
-| `sample_index` | Flat-file cache of the scan (JSON). |
-| `deepseek_api_key` | DeepSeek API key (or use `DEEPSEEK_API_KEY`). |
-| `deepseek_model` | DeepSeek model name (default `deepseek-chat`). |
-| `deepseek_base_url` | DeepSeek API endpoint. |
-| `manifest_file` | The sample list. |
-| `out_dir` | Where the `.ppak` and intermediate files go. |
-| `project` | Which project (1..99) the backup carries. |
-| `mode` | `scratch` (build from the format) or `base` (patch a real backup). |
-| `base_pak` | A real Sample Tool backup, used when `mode = "base"`. |
-| `device_sku` / `base_sku` | `TE032AS001` for K.O. II / riddim. |
-| `device_version` | Your device's OS version (shown in Sample Tool). |
-| `audio_tool` | `ffmpeg` or `sox`. |
-| `ffmpeg_extra_args` | Extra converter args, e.g. `["-af", "loudnorm"]`. |
-
-## The .ppak format
-
-A `.ppak` is a ZIP archive with three kinds of entry (all with a leading `/`):
-
-```
-/projects/P01.tar          one TAR holding a 26-byte binary record per pad
-/sounds/100 Kick.wav       one 44.1 kHz stereo 16-bit PCM WAV per sample slot
-/meta.json                 pak metadata (device SKU, version, timestamp, ...)
-```
-
-Details that matter (all verified by community reverse-engineering; see
-"Notes" below):
-
-- **Audio**: 44.1 kHz, stereo, 16-bit PCM. The device transcodes to
-  46875 Hz mono internally on upload; a `.ppak` holding the internal
-  transcoded format is silently rejected, so the converter always targets
-  44.1 kHz stereo.
-- **Pad records**: 26 bytes per pad (`ep_sampler/pad_record.py`). The build
-  writes the sample slot, sample length in frames, BPM, time-stretch mode and
-  play mode at the documented offsets; unassigned pads keep the factory blank
-  record.
-- **No `settings` file**: adding one to the project TAR makes Sample Tool fail
-  with `ERROR CLOCK 43`. This builder never adds it.
-
 ## Build modes
 
-- **`scratch`** (default) builds the archive entirely from the documented
-  format. It is fully self-contained, but the Sample Tool parser is strict
-  about details that are hard to reproduce exactly, so **verify the result on
-  your device** before relying on it.
-- **`base`** starts from a real `.ppak` you export once from the EP Sample
-  Tool, patches only the bytes that need to change (pad records, `meta.json`
-  timestamp, the `/sounds/` WAVs), and re-zips. This is the most
+- **`scratch`** (default) builds the `.ppak` entirely from the documented
+  format. Self-contained, but the Sample Tool parser is strict — **verify the
+  result on your device** before relying on it.
+- **`base`** starts from a real `.ppak` you export once from the Sample Tool,
+  patches only the bytes that need to change, and re-zips. This is the most
   compatibility-safe path. Set `"mode": "base"` and
   `"base_pak": "/path/to/backup.ppak"` in `config.json`.
 
-Either way, check free space on the device first — a restore that does not fit
+Either way, check free space on the device first — a restore that doesn't fit
 fails with `ERR SYSTEM_MODEL`.
 
 ## Notes
 
-- Format knowledge comes from the community reverse-engineering in
+- The `.ppak` format was reverse-engineered by the community, primarily in
   [`ZacharySBrown/ep133-ppak`](https://github.com/ZacharySBrown/ep133-ppak)
-  (its `PROTOCOL.md` is the reference spec), building on `phones24`'s archive
-  parser, `ep133-krate`, and `garrettjwilke`'s SysEx work. This project is not
-  affiliated with Teenage Engineering.
-- `meta.json` gets a fresh millisecond-precision `generated_at` on every build;
-  Sample Tool refuses stale or stub timestamps.
-- Two pad-numbering conventions exist on the device (top-down SysEx vs
-  bottom-up TAR). This project uses the **TAR** convention throughout the
-  manifest and files; the mapping table above is the safe reference.
-- The factory sample name/slot lists (`ep_sampler/data/*.txt`) are name lists
-  only — no audio is bundled. They come from community documentation:
-  [`codejunkee1/ep133-sounds`](https://github.com/codejunkee1/ep133-sounds)
-  for the EP-133 and [`jpopesculian/ep1320`](https://github.com/jpopesculian/ep1320)
-  for the EP-1320.
-
-## Creating a GitHub repo
-
-```bash
-cd ep_sampler
-git init -b main
-git add .
-git commit -m "Initial commit: EP-133 .ppak builder"
-
-# with the gh CLI:
-gh repo create ep_sampler --public --source=. --push
-
-# or manually: create an empty repo on github.com, then
-git remote add origin git@github.com:<you>/ep_sampler.git
-git push -u origin main
-```
+  (its `PROTOCOL.md` is the reference), building on `phones24`'s parser,
+  `ep133-krate` and `garrettjwilke`'s SysEx work. Not affiliated with Teenage
+  Engineering.
+- The factory sample lists (`ep_sampler/data/*.txt`) are name/slot lists only —
+  no audio is bundled. Sources: [`codejunkee1/ep133-sounds`](https://github.com/codejunkee1/ep133-sounds)
+  (EP-133) and [`jpopesculian/ep1320`](https://github.com/jpopesculian/ep1320)
+  (EP-1320).
 
 ## License
 
-MIT. Provided as-is; restoring a malformed `.ppak` can wipe or corrupt the
+MIT. Provided as-is; restoring a malformed `.ppak` can wipe or corrupt a
 device's sample memory, so always keep a real Sample Tool backup first.

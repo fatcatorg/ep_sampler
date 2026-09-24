@@ -16,6 +16,7 @@ import json
 import os
 import random
 import re
+import shutil
 import sys
 import zipfile
 from datetime import datetime
@@ -134,6 +135,7 @@ def cmd_build(args: argparse.Namespace) -> int:
     print(f"  project P{summary['project']:02d}  samples {summary['samples']}")
     if summary["pads"]:
         print("  pads " + ", ".join(summary["pads"]))
+    _cleanup_build_dir(sounds_dir)
     return 0
 
 
@@ -161,6 +163,15 @@ def _convert_samples(samples: list[Sample], sounds_dir: Path, cfg: dict) -> bool
 
 def _needs_conversion(src: Path, dst: Path) -> bool:
     return not dst.is_file() or src.stat().st_mtime > dst.stat().st_mtime
+
+
+def _cleanup_build_dir(sounds_dir: Path) -> None:
+    """Remove the temporary converted-audio working directory."""
+    shutil.rmtree(sounds_dir, ignore_errors=True)
+    try:
+        sounds_dir.parent.rmdir()
+    except OSError:
+        pass
 
 
 # --------------------------------------------------------------------------
@@ -233,6 +244,7 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
           f"project P{summary['project']:02d}  samples {summary['samples']}")
     if missing:
         print(f"  {len(missing)} factory samples not found and skipped")
+    _cleanup_build_dir(sounds_dir)
     return 0
 
 

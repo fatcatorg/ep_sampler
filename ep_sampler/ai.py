@@ -54,7 +54,7 @@ def classify_filenames(files: list[str], api_key: str,
     payload = {
         "model": model,
         "messages": [
-            {"role": "user", "content": _PROMPT.format(files=file_list)},
+            {"role": "user", "content": _PROMPT.replace("{files}", file_list)},
         ],
         "temperature": 0.2,
         "response_format": {"type": "json_object"},

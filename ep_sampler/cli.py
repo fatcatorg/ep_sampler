@@ -355,8 +355,11 @@ def _print_category_breakdown(samples) -> None:
     counts: dict[str, int] = {}
     for s in samples:
         counts[s.category] = counts.get(s.category, 0) + 1
-    print("  " + ", ".join(f"{c}:{n}" for c, n in
-                           sorted(counts.items(), key=lambda kv: -kv[1])))
+    if not counts:
+        return
+    line = ", ".join(f"{c}:{n}" for c, n in
+                     sorted(counts.items(), key=lambda kv: -kv[1]))
+    print(f"  the machine hears -> {line}")
 
 
 def cmd_scan(args: argparse.Namespace) -> int:

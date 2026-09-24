@@ -168,14 +168,25 @@ def scan_library(directory: Path, use_ai: bool, api_key: str = "",
         for ext in AUDIO_EXTS:
             files.extend(sorted(directory.rglob(f"*{ext}")))
 
+    if not files:
+        print("  nothing to listen to here")
+        return []
+
+    print(f"  found {len(files)} sounds")
+
     recs: list[SampleRec] = []
     rel_of = {f: str(f.relative_to(directory)) for f in files}
 
     ai_map: dict[str, dict] = {}
     if use_ai and files:
+        print("  asking deepseek to identify the sounds ...")
         ai_map = classify_filenames(list(rel_of.values()), api_key,
                                     model=model or "deepseek-chat",
                                     base_url=base_url or "https://api.deepseek.com")
+        if ai_map:
+            print(f"  deepseek named {len(ai_map)}/{len(files)} sounds")
+    else:
+        print("  identifying sounds from their names ...")
 
     for f in files:
         rel = rel_of[f]

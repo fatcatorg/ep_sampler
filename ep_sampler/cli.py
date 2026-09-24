@@ -18,6 +18,7 @@ import random
 import re
 import sys
 import zipfile
+from datetime import datetime
 from pathlib import Path
 
 from . import __version__
@@ -44,7 +45,7 @@ DEFAULTS = {
     "manifest_file": "manifest.txt",
     "out_dir": "out",
     "build_dir": "build",
-    "pak_file_name": "project-__PROJECT__.ppak",
+    "pak_file_name": "project-__PROJECT__-__DATE__.ppak",
     "project": 1,
     "mode": "scratch",
     "base_pak": "",
@@ -85,6 +86,20 @@ def _merge(cfg: dict, args, *names: str) -> dict:
     return cfg
 
 
+def _expand_pak_name(template: str, cfg: dict) -> str:
+    """Expand __PLACEHOLDERS__ in a pak file name template."""
+    now = datetime.now()
+    device = str(cfg.get("device_name") or "device")
+    device = re.sub(r"[^A-Za-z0-9_.-]+", "_", device).strip("._-") or "device"
+    name = template
+    name = name.replace("__PROJECT__", f"{cfg['project']:02d}")
+    name = name.replace("__DEVICE__", device)
+    name = name.replace("__DATE__", now.strftime("%Y-%m-%d"))
+    name = name.replace("__DATETIME__", now.strftime("%Y-%m-%d_%H%M%S"))
+    name = name.replace("__TIME__", now.strftime("%H%M%S"))
+    return name
+
+
 # --------------------------------------------------------------------------
 # build
 # --------------------------------------------------------------------------
@@ -111,8 +126,7 @@ def cmd_build(args: argparse.Namespace) -> int:
     if not _convert_samples(samples, sounds_dir, cfg):
         return 1
 
-    out_name = cfg["pak_file_name"].replace(
-        "__PROJECT__", f"{cfg['project']:02d}")
+    out_name = _expand_pak_name(cfg["pak_file_name"], cfg)
     cfg["out"] = str(out_dir / out_name)
 
     summary = build(cfg, samples, sounds_dir)
@@ -198,7 +212,7 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
         return 1
 
     out = Path(args.out).expanduser() if args.out else \
-        out_dir / f"{device}-factory.ppak"
+        out_dir / _expand_pak_name(f"{device}-factory-__DATE__.ppak", cfg)
     cfg["out"] = str(out)
     cfg["mode"] = "scratch"
 

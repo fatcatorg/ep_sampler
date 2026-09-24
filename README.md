@@ -164,6 +164,7 @@ built-in default). Values can also be overridden on the command line.
 | `deepseek_base_url` | DeepSeek API endpoint. |
 | `manifest_file` | The sample list. |
 | `out_dir` | Where output files go. |
+| `pak_file_name` | Output `.ppak` name template; supports `__PROJECT__`, `__DEVICE__`, `__DATE__` (`YYYY-MM-DD`), `__TIME__` (`HHMMSS`), `__DATETIME__`. |
 | `project` | Which project (1..99) the backup carries. |
 | `mode` | `scratch` (build from the format) or `base` (patch a real backup). |
 | `base_pak` | A real Sample Tool backup, used when `mode = "base"`. |

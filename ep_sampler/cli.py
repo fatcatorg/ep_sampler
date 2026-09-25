@@ -54,6 +54,7 @@ DEFAULTS = {
     "manifest_file": "manifest.txt",
     "out_dir": "out",
     "ting_dir": "",
+    "max_memory_mb": 1024,
     "build_dir": "build",
     "pak_file_name": "project-__PROJECT__-__DATE__.pak",
     "project": 1,
@@ -121,7 +122,7 @@ def cmd_build(args: argparse.Namespace) -> int:
            "samples_dir", "manifest_file", "out_dir", "project", "mode",
            "base_pak", "device_name", "device_sku", "base_sku",
            "device_version", "pak_release", "pak_type", "author",
-           "audio_tool", "ffmpeg_bin", "sox_bin")
+           "audio_tool", "ffmpeg_bin", "sox_bin", "max_memory_mb")
 
     samples_dir = Path(cfg["samples_dir"]).expanduser()
     manifest_path = Path(cfg["manifest_file"]).expanduser()
@@ -217,7 +218,7 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
     cfg["pak_type"] = target.get("pak_type", meta.get("pak_type", cfg["pak_type"]))
     cfg["pak_release"] = target.get("pak_release", meta.get("pak_release", cfg["pak_release"]))
     _merge(cfg, args, "out_dir", "project", "device_version", "audio_tool",
-           "ffmpeg_bin", "sox_bin")
+           "ffmpeg_bin", "sox_bin", "max_memory_mb")
 
     # The EP-40 (TE032AS006) uses 29-byte pad records (see docs/ep40-format.md).
     ep40 = target.get("device_sku") == "TE032AS006"
@@ -638,6 +639,7 @@ def _substitute(all_samples: list[Sample], failed: list[Sample],
 
 def cmd_manifest(args: argparse.Namespace) -> int:
     cfg = load_config(args.config)
+    _merge(cfg, args, "max_memory_mb")
     if args.list_guides:
         _print_guides()
         return 0
@@ -1035,6 +1037,9 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--audio-tool", choices=["ffmpeg", "sox"], default=None)
     b.add_argument("--ffmpeg-bin", default=None)
     b.add_argument("--sox-bin", default=None)
+    b.add_argument("--max-memory-mb", type=int, default=None,
+                   help="warn if the samples exceed this many MB "
+                        "(default 1024)")
     b.set_defaults(func=cmd_build)
 
     f = sub.add_parser(
@@ -1062,6 +1067,9 @@ def build_parser() -> argparse.ArgumentParser:
                         "(default 5)")
     f.add_argument("--seed", type=int, default=None,
                    help="random seed for reproducible --randomise")
+    f.add_argument("--max-memory-mb", type=int, default=None,
+                   help="warn if the samples exceed this many MB "
+                        "(default 1024)")
     f.set_defaults(func=cmd_build_factory)
 
     a = sub.add_parser("add", help="append one sample to the manifest")
@@ -1152,6 +1160,9 @@ def build_parser() -> argparse.ArgumentParser:
                         "(1 = write manifest.txt only)")
     m.add_argument("--ai", dest="ai", action="store_true", default=None)
     m.add_argument("--no-ai", dest="ai", action="store_false")
+    m.add_argument("--max-memory-mb", type=int, default=None,
+                   help="warn if the samples exceed this many MB "
+                        "(default 1024)")
     m.set_defaults(func=cmd_manifest)
 
     return p

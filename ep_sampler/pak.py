@@ -72,6 +72,32 @@ def _wav_frames(path: Path) -> int:
         return w.getnframes()
 
 
+def _warn_oversize(cfg: dict, samples: list[Sample], sounds_dir: Path) -> None:
+    """Report total sample audio size; warn if it exceeds max_memory_mb.
+
+    Size is the uncompressed 44.1 kHz stereo PCM (4 bytes/frame) - the audio
+    payload that goes into the .pak. The device transcodes to mono internally,
+    so this is a conservative upper bound on on-device memory.
+    """
+    limit_mb = int(cfg.get("max_memory_mb") or 0)
+    total = 0
+    for s in samples:
+        try:
+            total += _wav_frames(sounds_dir / s.wav_name) * 4
+        except Exception:
+            continue
+    total_mb = total / (1024 * 1024)
+    if limit_mb <= 0:
+        print(f"  audio {total_mb:.0f} MB ({len(samples)} samples)")
+    elif total_mb > limit_mb:
+        print(f"  WARNING: {total_mb:.0f} MB of samples exceeds "
+              f"max_memory_mb ({limit_mb} MB) - the restore may fail with "
+              f"ERR SYSTEM_MODEL")
+    else:
+        print(f"  audio {total_mb:.0f} MB / {limit_mb} MB limit "
+              f"({len(samples)} samples)")
+
+
 def build_project_tar(records: dict[tuple[str, int], bytes],
                       ep40: bool = False) -> bytes:
     """Build a project TAR (ustar, all mtimes 0) with 48 pad records."""
@@ -215,6 +241,7 @@ def build(cfg: dict, samples: list[Sample], sounds_dir: Path,
           ep40: bool = False) -> dict[str, object]:
     """Build the .pak. Returns a small summary dict."""
     os.makedirs(os.path.dirname(os.path.abspath(cfg["out"])), exist_ok=True)
+    _warn_oversize(cfg, samples, sounds_dir)
     if cfg["mode"] == "base":
         build_base(cfg, samples, sounds_dir)
     else:

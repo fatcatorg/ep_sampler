@@ -17,6 +17,7 @@
   "manifest_file": "manifest.txt",
   "out_dir": "out",
   "ting_dir": "out/ting",
+  "max_memory_mb": 1024,
   "project": 1,
   "mode": "scratch",
   "base_pak": "",

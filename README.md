@@ -197,6 +197,7 @@ keys are ignored by the tool, so you can leave it in place.
 | `manifest_file` | The sample list. |
 | `out_dir` | Where output files go. |
 | `ting_dir` | Folder of Ting `config.json` packs that `ting --from` reads by filename. |
+| `max_memory_mb` | Warn when a build's samples exceed this much device memory (default 1024; set 512 for smaller devices). |
 | `pak_file_name` | Output `.pak` name template; supports `__PROJECT__`, `__DEVICE__`, `__DATE__` (`YYYY-MM-DD`), `__TIME__` (`HHMMSS`), `__DATETIME__`. |
 | `project` | Which project (1..99) the backup carries. |
 | `mode` | `scratch` (build from the format) or `base` (patch a real backup). |
@@ -386,7 +387,9 @@ pack from favourites across files. Both look files up by filename in `ting_dir`.
   `"base_pak": "/path/to/backup.pak"` in `config.json`.
 
 Either way, check free space on the device first — a restore that doesn't fit
-fails with `ERR SYSTEM_MODEL`.
+fails with `ERR SYSTEM_MODEL`. Every build reports the total sample audio size
+and warns if it exceeds `max_memory_mb` (default 1024 MB); set it to `512` (or
+pass `--max-memory-mb 512`) for smaller-memory devices.
 
 ## Notes
 

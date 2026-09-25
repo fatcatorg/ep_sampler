@@ -22,3 +22,6 @@ samples/*.ogg
 
 # local config (see config.json.sample)
 config.json
+
+# local manifest
+manifest.txt

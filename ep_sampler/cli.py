@@ -52,6 +52,7 @@ DEFAULTS = {
     "deepseek_base_url": "https://api.deepseek.com",
     "manifest_file": "manifest.txt",
     "out_dir": "out",
+    "ting_dir": "",
     "build_dir": "build",
     "pak_file_name": "project-__PROJECT__-__DATE__.pak",
     "project": 1,
@@ -696,7 +697,8 @@ def cmd_menu(args: argparse.Namespace) -> int:
             fx = ",".join(str(s + 1) for s in styles) if styles else None
             ns = argparse.Namespace(
                 config=args.config, name=None, randomise=(rnd == "y"),
-                fx=fx, seed=None, samples=False, out=None, list_fx=False)
+                fx=fx, seed=None, samples=False, out=None, list_fx=False,
+                from_file=None, take=None)
             return cmd_ting(ns)
 
         source = _prompt_choice(
@@ -778,6 +780,8 @@ def cmd_ting(args: argparse.Namespace) -> int:
     out_dir = Path(cfg["out_dir"]).expanduser()
     out = Path(args.out).expanduser() if args.out else \
         out_dir / "ting" / "config.json"
+    ting_dir = (Path(cfg["ting_dir"]).expanduser() if cfg.get("ting_dir")
+                else out_dir / "ting")
     name = args.name or "TING PACK"
 
     styles = _parse_fx_styles(args.fx) if args.fx else []
@@ -786,6 +790,29 @@ def cmd_ting(args: argparse.Namespace) -> int:
         data = typed_config(name, styles=styles, seed=args.seed)
     else:
         data = default_config(name)
+
+    from_file = getattr(args, "from_file", None)
+    if from_file:
+        for i, preset in enumerate(_import_presets(from_file, ting_dir)):
+            if i > 3:
+                break
+            imported = dict(preset)
+            imported["pos"] = i
+            data["presets"][i] = imported
+
+    cache: dict[str, list[dict]] = {}
+    for spec in (getattr(args, "take", None) or []):
+        filename, src, dst = _parse_take(spec)
+        if filename not in cache:
+            cache[filename] = _import_presets(filename, ting_dir)
+        presets = cache[filename]
+        if src >= len(presets):
+            raise ValueError(
+                f"--take {spec}: source has only {len(presets)} preset(s)")
+        imported = dict(presets[src])
+        imported["pos"] = dst
+        data["presets"][dst] = imported
+
     if args.samples:
         data["samples"] = sample_entries()
 
@@ -803,8 +830,47 @@ def cmd_ting(args: argparse.Namespace) -> int:
         chain = " -> ".join(e["effect"] for e in p["list"])
         mods = [m for m in ("handle", "shake", "lfo", "trigger") if m in p]
         suffix = f"  [{' '.join(mods)}]" if mods else ""
-        print(f"  slot {p['pos']}: {p.get('name', '')}  {chain}{suffix}")
+        print(f"  slot {p['pos'] + 1}: {p.get('name', '')}  {chain}{suffix}")
     return 0
+
+
+def _import_presets(filename: str, ting_dir: Path) -> list[dict]:
+    """Load the `presets` from an existing Ting config file.
+
+    `filename` may be absolute or relative to `ting_dir` (the folder that
+    holds Ting packs, per config). Exits with a clear message if the file is
+    missing, unreadable, or has no presets.
+    """
+    src = Path(filename).expanduser()
+    if not src.is_absolute():
+        src = ting_dir / src
+    if not src.is_file():
+        raise ValueError(f"ting config not found: {src}")
+    try:
+        data = json.loads(src.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"not valid JSON: {src} ({exc})")
+    presets = data.get("presets")
+    if not presets:
+        raise ValueError(f"no presets in {src}")
+    return presets
+
+
+def _parse_take(spec: str) -> tuple[str, int, int]:
+    """Parse a '--take FILE:SRC:DST' spec into (filename, 0-based src,
+    0-based dst). SRC and DST are 1-based on the command line (1-4)."""
+    parts = spec.rsplit(":", 2)
+    if len(parts) != 3:
+        raise ValueError(f"invalid --take {spec!r} (expected FILE:SRC:DST)")
+    filename, src_s, dst_s = parts
+    try:
+        src = int(src_s)
+        dst = int(dst_s)
+    except ValueError:
+        raise ValueError(f"invalid --take {spec!r} (SRC and DST must be 1-4)")
+    if not (1 <= src <= 4 and 1 <= dst <= 4):
+        raise ValueError(f"--take {spec!r}: SRC and DST must be 1-4")
+    return filename, src - 1, dst - 1
 
 
 def _parse_fx_styles(spec: str) -> list[int]:
@@ -954,6 +1020,13 @@ def build_parser() -> argparse.ArgumentParser:
                    help="random seed for reproducible randomisation")
     t.add_argument("--samples", action="store_true",
                    help="include a samples section (1.wav..4.wav, oneshot)")
+    t.add_argument("--from", dest="from_file", default=None, metavar="FILE",
+                   help="clone the FX from an existing config (filename "
+                        "relative to ting_dir)")
+    t.add_argument("--take", dest="take", action="append", default=None,
+                   metavar="FILE:SRC:DST",
+                   help="take FX at slot SRC (1-4) from FILE and place it at "
+                        "slot DST (1-4); repeatable")
     t.add_argument("--out", default=None,
                    help="output path (default: out/ting/config.json)")
     t.set_defaults(func=cmd_ting)

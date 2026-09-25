@@ -9,6 +9,7 @@
   "deepseek_base_url": "https://api.deepseek.com",
   "manifest_file": "manifest.txt",
   "out_dir": "out",
+  "ting_dir": "out/ting",
   "project": 1,
   "mode": "scratch",
   "base_pak": "",

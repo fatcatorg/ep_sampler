@@ -166,6 +166,7 @@ built-in default). Values can also be overridden on the command line.
 | `deepseek_base_url` | DeepSeek API endpoint. |
 | `manifest_file` | The sample list. |
 | `out_dir` | Where output files go. |
+| `ting_dir` | Folder of Ting `config.json` packs that `ting --from` reads by filename. |
 | `pak_file_name` | Output `.pak` name template; supports `__PROJECT__`, `__DEVICE__`, `__DATE__` (`YYYY-MM-DD`), `__TIME__` (`HHMMSS`), `__DATETIME__`. |
 | `project` | Which project (1..99) the backup carries. |
 | `mode` | `scratch` (build from the format) or `base` (patch a real backup). |
@@ -312,6 +313,8 @@ optional handle / shake / lfo / trigger modulation.
 ep-sampler ting                       # factory-style presets (ECHO/SPRING/PIXIE/ROBOT)
 ep-sampler ting --randomise          # 4 random FX styles
 ep-sampler ting --fx 1,3,5,7          # pick specific styles, rest filled randomly
+ep-sampler ting --from favs.json      # clone the FX from an existing pack
+ep-sampler ting --take fav3.json:2:2 --take fav2.json:4:1   # fx2->slot2, fx4->slot1
 ep-sampler ting --samples             # include a samples section (1.wav..4.wav)
 ep-sampler ting --list-fx             # list the styles
 ```
@@ -335,7 +338,10 @@ but each pack is different:
 
 Output goes to `out/ting/config.json` (override with `--out`), plus a
 timestamped `config.json.<timestamp>` copy so every pack is kept; copy the main
-file onto the `tingdisk` volume and restart the mic.
+file onto the `tingdisk` volume and restart the mic. `--from FILE` clones the
+FX from an existing pack, and `--take FILE:SRC:DST` (repeatable) pulls one FX —
+SRC 1-4 in the source file, DST 1-4 in the new pack — so you can assemble a
+pack from favourites across files. Both look files up by filename in `ting_dir`.
 
 ## Build modes
 

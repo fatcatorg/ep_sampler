@@ -35,6 +35,16 @@ pip install -e .
 python -m ep_sampler --help
 ```
 
+Then copy the sample config and set your paths:
+
+```bash
+cp config.json.sample config.json
+```
+
+Everything runs without a `config.json` (built-in defaults are used), but
+you'll want one to point at your sample folders and, optionally, your DeepSeek
+API key. See [Configuration](#configuration) for every key.
+
 ## Quick start
 
 **1. Build a backup from your samples.** Put WAVs in `samples/`, list them in
@@ -44,15 +54,17 @@ python -m ep_sampler --help
 python -m ep_sampler build          # or: ep-sampler build
 ```
 
-The result is `out/project-01.pak`. In the official **EP Sample Tool**, use
-**Load** / **Upload** and point it at that file.
+The result is a `.pak` in `out/` (named `project-01-<date>.pak` by default). In
+the official **EP Sample Tool**, use **Load** / **Upload** and point it at that
+file.
 
-**2. Rebuild a device's factory sound set** (EP-133 / EP-1320) from your own
-copies of the samples:
+**2. Rebuild a device's factory sound set** (EP-133 / EP-1320 / EP-40) from your
+own copies of the samples:
 
 ```bash
 ep-sampler build-factory ep133
 ep-sampler build-factory ep1320
+ep-sampler build-factory ep40
 ```
 
 **3. Generate FX presets for the Ting microphone:**
@@ -153,6 +165,9 @@ the backup:
 All settings live in `config.json` (every key is optional and falls back to a
 built-in default). Values can also be overridden on the command line.
 
+Start from the sample — `cp config.json.sample config.json` — and set at least
+the sample folders (`*_samples_dir`) you plan to use, plus `out_dir`.
+
 | Key | Meaning |
 | --- | --- |
 | `samples_dir` | Main folder of input sample WAVs. |
@@ -250,6 +265,7 @@ right device identity.
 ep-sampler build-factory ep133
 ep-sampler build-factory ep1320
 ep-sampler build-factory ep1320 --randomise --seed 7   # random pad assignments
+ep-sampler build-factory ep1320 --as ep40              # tag the pack for another device
 ep-sampler build-factory ep40        # discovers the set from slot-numbered files
 ```
 
@@ -282,7 +298,8 @@ group layout (drums on A, bass on B, chords/melody on C, vocals/fx on D) —
 until the real assignments are found. Pass `--randomise` (with optional
 `--seed` and `--programmes N`) to roll a fresh random selection instead of the
 fixed table. The assignments live in `ep_sampler/factory_programmes.py`; edit
-the `FACTORY_PROGRAMMES` table and rebuild to retune.
+the `FACTORY_PROGRAMMES` table and rebuild to retune. Add `--as <device>` to tag
+the build for a different device (e.g. `--as ep40`).
 
 ### Re-tagging a factory pak (preferred)
 

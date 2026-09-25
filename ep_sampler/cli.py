@@ -357,6 +357,62 @@ def cmd_inspect(args: argparse.Namespace) -> int:
     return 0
 
 
+# --------------------------------------------------------------------------
+# retag
+# --------------------------------------------------------------------------
+
+def cmd_retag(args: argparse.Namespace) -> int:
+    """Rewrite an existing .pak's metadata so it loads on a different device.
+
+    All entries are copied verbatim; only /meta.json's device identity is
+    changed.
+    """
+    src = Path(args.file).expanduser()
+    if not src.is_file():
+        print(f"not a file: {src}", file=sys.stderr)
+        return 1
+
+    key = normalize_device(args.as_device)
+    target = device_meta(key)
+
+    out = (Path(args.out).expanduser() if args.out
+           else src.with_name(f"{src.stem}-{key}.pak"))
+
+    with zipfile.ZipFile(src, "r") as zin:
+        names = zin.namelist()
+        if "/meta.json" not in names:
+            print("no /meta.json in the pak", file=sys.stderr)
+            return 1
+        meta = json.loads(zin.read("/meta.json"))
+        orig = meta.get("device_name", "?")
+
+        meta["device_name"] = target["device_name"]
+        meta["device_sku"] = target["device_sku"]
+        if target.get("base_sku"):
+            meta["base_sku"] = target["base_sku"]
+        else:
+            meta.pop("base_sku", None)
+        meta["device_version"] = target.get("device_version",
+                                            meta.get("device_version", ""))
+        if args.pak_type:
+            meta["pak_type"] = args.pak_type
+        if args.pak_release:
+            meta["pak_release"] = args.pak_release
+
+        with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zout:
+            for name in names:
+                if name == "/meta.json":
+                    zout.writestr(name, json.dumps(meta, indent=2))
+                else:
+                    zout.writestr(name, zin.read(name))
+
+    print(f"built {out}")
+    print(f"  {orig} -> {target['device_name']} "
+          f"(sku {target['device_sku']}, "
+          f"version {meta.get('device_version', '?')})")
+    return 0
+
+
 def _print_pads(tar_bytes: bytes) -> None:
     from .pak import find_pad_record_offsets
     import struct
@@ -838,6 +894,19 @@ def build_parser() -> argparse.ArgumentParser:
     i = sub.add_parser("inspect", help="list the contents of a .pak")
     i.add_argument("file")
     i.set_defaults(func=cmd_inspect)
+
+    r = sub.add_parser("retag",
+                       help="re-tag an existing .pak for a different device")
+    r.add_argument("file")
+    r.add_argument("--as", dest="as_device", required=True,
+                   help="target device (e.g. ep40)")
+    r.add_argument("--out", default=None,
+                   help="output path (default: <name>-<device>.pak)")
+    r.add_argument("--pak-type", default=None,
+                   help="override the pak type (default: keep source's)")
+    r.add_argument("--pak-release", default=None,
+                   help="override the pak release (default: keep source's)")
+    r.set_defaults(func=cmd_retag)
 
     t = sub.add_parser(
         "ting", help="build an EP-2350 Ting config.json (FX mic)")

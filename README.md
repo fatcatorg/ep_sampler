@@ -248,6 +248,7 @@ right device identity.
 ```bash
 ep-sampler build-factory ep133
 ep-sampler build-factory ep1320
+ep-sampler build-factory ep1320 --randomise --seed 7   # random pad assignments
 ep-sampler build-factory ep40        # discovers the set from slot-numbered files
 ```
 
@@ -277,9 +278,10 @@ assignments, patterns, scenes and FX settings. The EP-1320 has no bundled
 project data yet, so `build-factory ep1320` automatically assigns hand-made
 factory programmes instead — 5 programmes, 48 pads each, following the EP-40
 group layout (drums on A, bass on B, chords/melody on C, vocals/fx on D) —
-until the real assignments are found. The assignments live in
-`ep_sampler/factory_programmes.py`; edit the `FACTORY_PROGRAMMES` table and
-rebuild to retune.
+until the real assignments are found. Pass `--randomise` (with optional
+`--seed` and `--programmes N`) to roll a fresh random selection instead of the
+fixed table. The assignments live in `ep_sampler/factory_programmes.py`; edit
+the `FACTORY_PROGRAMMES` table and rebuild to retune.
 
 ### Re-tagging a factory pak (preferred)
 

@@ -15,6 +15,7 @@ Each programme has 12 pads per group; slot numbers refer to the factory
 sample library (1..220 for the EP-1320). Some sounds are reused, which is fine.
 """
 
+import random
 from pathlib import Path
 
 from .pad_record import build_pad_record, build_pad_record_ep40
@@ -62,22 +63,105 @@ FACTORY_PROGRAMMES = {
     ],
 }
 
+# Category pools for randomising pad assignments, following the same EP-40
+# group layout (A drums, B bass, C chords/melody, D vocals/fx). Every slot
+# belongs to exactly one group pool; sub-categories let the generator lay out
+# a sensible kit (kicks before snares before hats ...).
+GROUP_POOLS = {
+    "ep1320": {
+        "A": {
+            "kick": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+            "snare": list(range(10, 19)),
+            "clap": [19, 30, 31],
+            "hat": list(range(20, 30)),
+            "perc": list(range(32, 46)),
+            "tom": list(range(46, 53)) + [91],
+        },
+        "B": {
+            "bass": [125, 126, 127],
+            "drone": [70, 93, 151, 152],
+            "low": list(range(53, 70)),
+        },
+        "C": {
+            "lead": [76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88,
+                     89, 90, 92,
+                     96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106,
+                     107, 108, 109, 110, 111, 112, 113, 114, 115, 116,
+                     117, 118, 119, 120, 122, 123, 124],
+            "fanfare": [71, 72, 73, 74, 75, 135, 136, 137, 138, 139,
+                        140, 141, 142, 143],
+            "chord": [128, 129, 130, 131, 132, 133, 134, 144, 145, 146,
+                      147, 148, 149, 150, 153, 154],
+        },
+        "D": {
+            "vocal": [94, 95, 121] + list(range(189, 210)),
+            "fx": list(range(155, 189)),
+            "animal": list(range(210, 221)),
+        },
+    },
+}
+
+# 12 roles per group; each role is sampled from the matching sub-category.
+PROGRAMME_LAYOUT = {
+    "A": (["kick"] * 2 + ["snare"] * 3 + ["clap"] + ["hat"] * 2
+          + ["perc"] * 2 + ["tom"] * 2),
+    "B": ["bass"] * 4 + ["drone"] * 3 + ["low"] * 5,
+    "C": ["lead"] * 5 + ["fanfare"] * 3 + ["chord"] * 4,
+    "D": ["vocal"] * 4 + ["fx"] * 4 + ["animal"] * 4,
+}
+
+PROGRAMME_NAMES = ["SIEGE", "DUNGEON", "TAVERN", "WITCH HUNT", "ROYAL COURT",
+                   "JOUST", "PLAGUE", "CRUSADE", "MOAT", "KEEP"]
+
 
 def has_factory_programmes(device: str) -> bool:
-    """True if hand-assigned factory programmes are bundled for `device`."""
-    return device in FACTORY_PROGRAMMES
+    """True if factory programmes can be made for `device` (a fixed
+    hand-assigned table or randomisable category pools)."""
+    return device in FACTORY_PROGRAMMES or device in GROUP_POOLS
 
 
-def build_factory_projects(device: str, samples: list, sounds_dir: Path,
+def random_programmes(device: str, count: int = 5,
+                      seed: int | None = None) -> list[dict]:
+    """Generate `count` randomised programmes for `device`.
+
+    Each programme fills all 48 pads from the device's category pools, laid
+    out per `PROGRAMME_LAYOUT` (EP-40 group types). Samples repeat across
+    programmes, and within a programme when a category pool is smaller than
+    the number of roles that draw from it.
+    """
+    pools = GROUP_POOLS.get(device)
+    if not pools:
+        return []
+    rng = random.Random(seed)
+    programmes: list[dict] = []
+    for _ in range(max(1, count)):
+        prog: dict = {"name": rng.choice(PROGRAMME_NAMES)}
+        for group, roles in PROGRAMME_LAYOUT.items():
+            group_pools = pools[group]
+            bags = {cat: rng.sample(pool, len(pool))
+                    for cat, pool in group_pools.items()}
+            pads: list[int] = []
+            for role in roles:
+                if not bags[role]:
+                    bags[role] = rng.sample(group_pools[role],
+                                            len(group_pools[role]))
+                pads.append(bags[role].pop())
+            prog[group] = pads
+        programmes.append(prog)
+    return programmes
+
+
+def build_factory_projects(programmes: list, samples: list, sounds_dir: Path,
                            ep40: bool = False) -> dict[str, bytes]:
-    """Build one project TAR per hand-assigned programme for `device`.
+    """Build one project TAR per programme.
 
+    `programmes` is a list of `{A/B/C/D: [12 slots], name?}` dicts - either
+    the fixed `FACTORY_PROGRAMMES` table or the output of `random_programmes`.
     `samples` are the factory `Sample` objects (already converted into
     `sounds_dir`); frame lengths are read from the converted WAVs so the pad
     records carry the correct lengths. `ep40` switches the pad records and
     blank pads to the EP-40's 29-byte format.
     """
-    programmes = FACTORY_PROGRAMMES.get(device)
     if not programmes:
         return {}
 

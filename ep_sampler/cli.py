@@ -28,8 +28,8 @@ from .factory import (DEVICE_LABELS, DEVICE_ORDER, FACTORY_DEVICES,
                       device_label, device_meta, find_samples,
                       has_factory_list, load_factory_projects,
                       normalize_device)
-from .factory_programmes import (build_factory_projects,
-                                 has_factory_programmes)
+from .factory_programmes import (FACTORY_PROGRAMMES, build_factory_projects,
+                                 has_factory_programmes, random_programmes)
 from .manifest import Sample, parse_manifest
 from .manifest_build import (GUIDES, build_kits, build_manifest, load_index,
                              save_index, scan_library)
@@ -253,9 +253,15 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
         return 1
 
     if not projects and has_factory_programmes(device):
-        projects = build_factory_projects(device, samples, sounds_dir, ep40)
+        if args.randomise:
+            programmes = random_programmes(device, args.programmes or 5,
+                                           args.seed)
+        else:
+            programmes = FACTORY_PROGRAMMES.get(device, [])
+        projects = build_factory_projects(programmes, samples, sounds_dir, ep40)
+        label = "randomised" if args.randomise else "hand-assigned"
         print(f"  assigning {len(projects)} factory programmes "
-              f"(hand-assigned pads - real factory projects not bundled yet)")
+              f"({label} pads - real factory projects not bundled yet)")
 
     out = Path(args.out).expanduser() if args.out else \
         out_dir / _expand_pak_name(f"{device}-factory-__DATE__.pak", cfg)
@@ -728,7 +734,8 @@ def cmd_menu(args: argparse.Namespace) -> int:
         ns = argparse.Namespace(
             config=args.config, device=device, out_dir=None, out=None,
             project=None, device_version=None, audio_tool=None,
-            ffmpeg_bin=None, sox_bin=None, strict=False, as_device=None)
+            ffmpeg_bin=None, sox_bin=None, strict=False, as_device=None,
+            randomise=False, programmes=5, seed=None)
         return cmd_build_factory(ns)
 
     # manifest source - set the target device identity for the build
@@ -893,6 +900,15 @@ def build_parser() -> argparse.ArgumentParser:
                    help="fail if any factory sample is missing")
     f.add_argument("--as", dest="as_device", default=None,
                    help="tag the pak as a different device (e.g. --as ep40)")
+    f.add_argument("--randomise", "--randomize", dest="randomise",
+                   action="store_true",
+                   help="randomise pad assignments (devices without bundled "
+                        "projects)")
+    f.add_argument("--programmes", type=int, default=5,
+                   help="number of programmes to generate with --randomise "
+                        "(default 5)")
+    f.add_argument("--seed", type=int, default=None,
+                   help="random seed for reproducible --randomise")
     f.set_defaults(func=cmd_build_factory)
 
     a = sub.add_parser("add", help="append one sample to the manifest")

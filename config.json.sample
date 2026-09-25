@@ -1,7 +1,14 @@
 {
+  "_devices": {
+    "_note": "Set device_name / device_sku / device_version below to YOUR device (see README).",
+    "EP-133 K.O. II":  {"device_name": "EP-133",  "device_sku": "TE032AS001", "device_version": "1.1.0"},
+    "EP-1320 Medieval": {"device_name": "EP-1320", "device_sku": "TE032AS001", "device_version": "your OS version"},
+    "EP-40 Riddim":   {"device_name": "EP-40",   "device_sku": "TE032AS006", "device_version": "2.5.1"}
+  },
   "samples_dir": "samples",
   "ep133_samples_dir": "",
   "ep1320_samples_dir": "",
+  "ep40_samples_dir": "",
   "library_dir": "samples",
   "sample_index": "state/sample-index.json",
   "deepseek_api_key": "",

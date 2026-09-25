@@ -79,7 +79,8 @@ def load_config(path: Path | None) -> dict:
     if p.is_file():
         with open(p, "r", encoding="utf-8") as fh:
             user = json.load(fh)
-        unknown = set(user) - set(DEFAULTS)
+        unknown = {k for k in user
+                   if k not in DEFAULTS and not str(k).startswith("_")}
         if unknown:
             print(f"warning: ignoring unknown config keys: {sorted(unknown)}",
                   file=sys.stderr)
@@ -138,7 +139,7 @@ def cmd_build(args: argparse.Namespace) -> int:
     out_name = _expand_pak_name(cfg["pak_file_name"], cfg)
     cfg["out"] = str(out_dir / out_name)
 
-    summary = build(cfg, samples, sounds_dir)
+    summary = build(cfg, samples, sounds_dir, ep40=(cfg.get("device_sku") == "TE032AS006"))
     print(f"built {summary['out']}")
     print(f"  project P{summary['project']:02d}  samples {summary['samples']}")
     if summary["pads"]:
@@ -542,7 +543,8 @@ def _build_kits_pak(cfg: dict, kits: list[list[dict]]) -> int:
     cfg["out"] = str(out_dir / _expand_pak_name(cfg["pak_file_name"], cfg))
     cfg["mode"] = "scratch"
 
-    summary = build(cfg, all_samples, sounds_dir, kits=kit_samples)
+    summary = build(cfg, all_samples, sounds_dir, kits=kit_samples,
+                    ep40=(cfg.get("device_sku") == "TE032AS006"))
     print(f"built {summary['out']}")
     print(f"  programmes {len(kit_samples)}  samples {len(all_samples)}")
     _cleanup_build_dir(sounds_dir)

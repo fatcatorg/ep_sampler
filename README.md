@@ -168,6 +168,21 @@ built-in default). Values can also be overridden on the command line.
 Start from the sample — `cp config.json.sample config.json` — and set at least
 the sample folders (`*_samples_dir`) you plan to use, plus `out_dir`.
 
+The `device_name` / `device_sku` / `device_version` fields tell a built `.pak`
+which device it's for — set them to **your** device (not everyone has an
+EP-40):
+
+| Device | `device_name` | `device_sku` | `device_version` |
+| --- | --- | --- | --- |
+| EP-133 K.O. II | `EP-133` | `TE032AS001` | `1.1.0` (or your OS version) |
+| EP-1320 Medieval | `EP-1320` | `TE032AS001` | your OS version |
+| EP-40 Riddim | `EP-40` | `TE032AS006` | `2.5.1` |
+
+`build-factory` sets these automatically from its device tables; the config
+values matter for `build` and `manifest`, which build whatever device is set
+here. The sample also carries a `_devices` reference object; underscore-prefixed
+keys are ignored by the tool, so you can leave it in place.
+
 | Key | Meaning |
 | --- | --- |
 | `samples_dir` | Main folder of input sample WAVs. |

@@ -28,6 +28,8 @@ from .factory import (DEVICE_LABELS, DEVICE_ORDER, FACTORY_DEVICES,
                       device_label, device_meta, find_samples,
                       has_factory_list, load_factory_projects,
                       normalize_device)
+from .factory_programmes import (build_factory_projects,
+                                 has_factory_programmes)
 from .manifest import Sample, parse_manifest
 from .manifest_build import (GUIDES, build_kits, build_manifest, load_index,
                              save_index, scan_library)
@@ -246,6 +248,11 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
 
     if not _convert_samples(samples, sounds_dir, cfg):
         return 1
+
+    if not projects and has_factory_programmes(device):
+        projects = build_factory_projects(device, samples, sounds_dir)
+        print(f"  assigning {len(projects)} factory programmes "
+              f"(hand-assigned pads - real factory projects not bundled yet)")
 
     out = Path(args.out).expanduser() if args.out else \
         out_dir / _expand_pak_name(f"{device}-factory-__DATE__.pak", cfg)

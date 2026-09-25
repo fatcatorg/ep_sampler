@@ -271,11 +271,15 @@ Missing samples are listed and the build continues with the rest; pass
 ep-sampler build-factory ep1320 --strict
 ```
 
-Factory builds restore the sample library into the factory slots. For devices
-with bundled project data (currently the EP-40), they also restore the factory
-projects — pad assignments, patterns, scenes and FX settings — so the result is
-a full factory restore. Devices without bundled project data (EP-133 / EP-1320)
-fall back to a blank project.
+Factory builds restore the sample library into the factory slots. Devices with
+bundled project data (EP-133, EP-40) also restore the factory projects — pad
+assignments, patterns, scenes and FX settings. The EP-1320 has no bundled
+project data yet, so `build-factory ep1320` automatically assigns hand-made
+factory programmes instead — 5 programmes, 48 pads each, following the EP-40
+group layout (drums on A, bass on B, chords/melody on C, vocals/fx on D) —
+until the real assignments are found. The assignments live in
+`ep_sampler/factory_programmes.py`; edit the `FACTORY_PROGRAMMES` table and
+rebuild to retune.
 
 ### Re-tagging a factory pak (preferred)
 

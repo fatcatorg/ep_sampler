@@ -54,9 +54,9 @@ API key. See [Configuration](#configuration) for every key.
 python -m ep_sampler build          # or: ep-sampler build
 ```
 
-The result is a `.pak` in `out/` (named `project-01-<date>.pak` by default). In
-the official **EP Sample Tool**, use **Load** / **Upload** and point it at that
-file.
+The result is a `.pak` in `out/` (named `<device>-<date_time>.pak` by default,
+e.g. `EP-40-2026-09-25_163001.pak`). In the official **EP Sample Tool**, use
+**Load** / **Upload** and point it at that file.
 
 **2. Rebuild a device's factory sound set** (EP-133 / EP-1320 / EP-40) from your
 own copies of the samples:
@@ -198,7 +198,7 @@ keys are ignored by the tool, so you can leave it in place.
 | `out_dir` | Where output files go. |
 | `ting_dir` | Folder of Ting `config.json` packs that `ting --from` reads by filename. |
 | `max_memory_mb` | Warn when a build's samples exceed this much device memory (default 1024; set 512 for smaller devices). |
-| `pak_file_name` | Output `.pak` name template; supports `__PROJECT__`, `__DEVICE__`, `__DATE__` (`YYYY-MM-DD`), `__TIME__` (`HHMMSS`), `__DATETIME__`. |
+| `pak_file_name` | Output `.pak` name template; supports `__PROJECT__`, `__DEVICE__`, `__GUIDE__`, `__DATE__` (`YYYY-MM-DD`), `__TIME__` (`HHMMSS`), `__DATETIME__` (`YYYY-MM-DD_HHMMSS`, includes seconds). |
 | `project` | Which project (1..99) the backup carries. |
 | `mode` | `scratch` (build from the format) or `base` (patch a real backup). |
 | `base_pak` | A real Sample Tool backup, used when `mode = "base"`. |

@@ -56,7 +56,7 @@ DEFAULTS = {
     "ting_dir": "",
     "max_memory_mb": 1024,
     "build_dir": "build",
-    "pak_file_name": "project-__PROJECT__-__DATE__.pak",
+    "pak_file_name": "__DEVICE__-__DATETIME__.pak",
     "project": 1,
     "mode": "scratch",
     "base_pak": "",
@@ -103,9 +103,12 @@ def _expand_pak_name(template: str, cfg: dict) -> str:
     now = datetime.now()
     device = str(cfg.get("device_name") or "device")
     device = re.sub(r"[^A-Za-z0-9_.-]+", "_", device).strip("._-") or "device"
+    guide = str(cfg.get("guide") or "mix")
+    guide = re.sub(r"[^A-Za-z0-9_.-]+", "_", guide).strip("._-") or "mix"
     name = template
     name = name.replace("__PROJECT__", f"{cfg['project']:02d}")
     name = name.replace("__DEVICE__", device)
+    name = name.replace("__GUIDE__", guide)
     name = name.replace("__DATE__", now.strftime("%Y-%m-%d"))
     name = name.replace("__DATETIME__", now.strftime("%Y-%m-%d_%H%M%S"))
     name = name.replace("__TIME__", now.strftime("%H%M%S"))
@@ -282,7 +285,7 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
               f"({label} pads - real factory projects not bundled yet)")
 
     out = Path(args.out).expanduser() if args.out else \
-        out_dir / _expand_pak_name(f"{device}-factory-__DATE__.pak", cfg)
+        out_dir / _expand_pak_name(f"{device}-factory-__DATETIME__.pak", cfg)
     cfg["out"] = str(out)
     cfg["mode"] = "scratch"
 
@@ -708,6 +711,8 @@ def cmd_manifest(args: argparse.Namespace) -> int:
     print("  " + ", ".join(f"group {g}:{n}" for g, n in sorted(groups.items())))
 
     if num > 1:
+        cfg["guide"] = guide
+        cfg["pak_file_name"] = "__GUIDE__-__DATETIME__.pak"
         return _build_kits_pak(cfg, kits, library=samples)
     return 0
 

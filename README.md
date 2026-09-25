@@ -104,6 +104,7 @@ below (so it can be scripted).
 | `ep-sampler ting` | Build an EP-2350 Ting `config.json`. |
 | `ep-sampler add <file.wav>` | Append one sample to `manifest.txt`. |
 | `ep-sampler inspect <file.pak>` | List a `.pak`'s metadata, sounds and pads. |
+| `ep-sampler retag <file.pak> --as <device>` | Re-tag an existing `.pak`'s device identity. |
 
 Add `--help` to any command for its full options (for example
 `ep-sampler manifest --help`). Note that `--config <path>` goes **before** the
@@ -322,6 +323,22 @@ Output goes to `out/ting/config.json` (override with `--out`); copy it onto the
 
 Either way, check free space on the device first — a restore that doesn't fit
 fails with `ERR SYSTEM_MODEL`.
+
+## Re-tagging a .pak for another device
+
+`retag` rewrites an existing `.pak`'s device identity in `meta.json`
+(`device_name`, `device_sku`, `base_sku`, `device_version`) and copies every
+other entry byte-for-byte, so content built for one device loads on another:
+
+```bash
+ep-sampler retag /path/to/content.pak --as ep40
+```
+
+Output defaults to `<name>-<device>.pak` (override with `--out`). `--pak-type`
+and `--pak-release` override the metadata fields rather than keeping the
+source's values. This does **not** convert the samples or project data — it
+only changes which device the pak claims to be, so use it between devices
+whose slot layout you know to be compatible.
 
 ## Notes
 

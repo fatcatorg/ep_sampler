@@ -21,7 +21,9 @@ import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .pad_record import DEFAULT_BLANK_PAD, PAD_RECORD_SIZE, build_pad_record
+from .pad_record import (DEFAULT_BLANK_PAD, DEFAULT_BLANK_PAD_EP40,
+                         PAD_RECORD_SIZE, build_pad_record,
+                         build_pad_record_ep40)
 from .manifest import Sample
 
 TAR_BLOCK = 512
@@ -49,15 +51,17 @@ def build_meta(cfg: dict) -> bytes:
     return json.dumps(meta, indent=2).encode("utf-8")
 
 
-def _records_for(samples: list[Sample], sounds_dir: Path) -> dict[tuple[str, int], bytes]:
-    """Return {(group, pad): 26-byte record} for every sample with a pad
+def _records_for(samples: list[Sample], sounds_dir: Path,
+                 ep40: bool = False) -> dict[tuple[str, int], bytes]:
+    """Return {(group, pad): pad record} for every sample with a pad
     binding. Samples without a pad (e.g. factory sounds) are skipped."""
+    builder = build_pad_record_ep40 if ep40 else build_pad_record
     records: dict[tuple[str, int], bytes] = {}
     for s in samples:
         if s.group is None or s.pad is None:
             continue
         frames = _wav_frames(sounds_dir / s.wav_name)
-        records[(s.group, s.pad)] = build_pad_record(
+        records[(s.group, s.pad)] = builder(
             s.slot, frames, s.bpm, s.bpm_override, s.time_mode, s.playmode)
     return records
 
@@ -68,9 +72,11 @@ def _wav_frames(path: Path) -> int:
         return w.getnframes()
 
 
-def build_project_tar(records: dict[tuple[str, int], bytes]) -> bytes:
+def build_project_tar(records: dict[tuple[str, int], bytes],
+                      ep40: bool = False) -> bytes:
     """Build a project TAR (ustar, all mtimes 0) with 48 pad records."""
     buf = io.BytesIO()
+    blank = DEFAULT_BLANK_PAD_EP40 if ep40 else DEFAULT_BLANK_PAD
     with tarfile.open(fileobj=buf, mode="w", format=tarfile.USTAR_FORMAT) as tf:
         def add_dir(name: str) -> None:
             ti = tarfile.TarInfo(name)
@@ -91,7 +97,7 @@ def build_project_tar(records: dict[tuple[str, int], bytes]) -> bytes:
             add_dir(f"pads/{group}")
             for pad in range(1, 13):
                 add_file(f"pads/{group}/p{pad:02d}",
-                         records.get((group, pad), DEFAULT_BLANK_PAD))
+                         records.get((group, pad), blank))
         add_dir("patterns")
     return buf.getvalue()
 
@@ -143,7 +149,8 @@ def _zip_info(name: str, now: datetime) -> zipfile.ZipInfo:
 
 def build_scratch(cfg: dict, samples: list[Sample], sounds_dir: Path,
                   project_tars: dict[str, bytes] | None = None,
-                  kits: list[list[Sample]] | None = None) -> None:
+                  kits: list[list[Sample]] | None = None,
+                  ep40: bool = False) -> None:
     meta_bytes = build_meta(cfg)
     now = datetime.now()
     project = cfg["project"]
@@ -155,12 +162,12 @@ def build_scratch(cfg: dict, samples: list[Sample], sounds_dir: Path,
                 zf.writestr(_zip_info(f"/projects/{name}", now), data)
         elif kits:
             for i, kit in enumerate(kits, 1):
-                records = _records_for(kit, sounds_dir)
+                records = _records_for(kit, sounds_dir, ep40)
                 zf.writestr(_zip_info(f"/projects/P{i:02d}.tar", now),
-                            build_project_tar(records))
+                            build_project_tar(records, ep40))
         else:
-            records = _records_for(samples, sounds_dir)
-            tar_bytes = build_project_tar(records)
+            records = _records_for(samples, sounds_dir, ep40)
+            tar_bytes = build_project_tar(records, ep40)
             zf.writestr(_zip_info(f"/projects/P{project:02d}.tar", now), tar_bytes)
         for s in sorted(samples, key=lambda x: x.slot):
             zf.writestr(_zip_info(f"/sounds/{s.wav_name}", now),
@@ -204,13 +211,14 @@ def build_base(cfg: dict, samples: list[Sample], sounds_dir: Path) -> None:
 
 def build(cfg: dict, samples: list[Sample], sounds_dir: Path,
           project_tars: dict[str, bytes] | None = None,
-          kits: list[list[Sample]] | None = None) -> dict[str, object]:
+          kits: list[list[Sample]] | None = None,
+          ep40: bool = False) -> dict[str, object]:
     """Build the .pak. Returns a small summary dict."""
     os.makedirs(os.path.dirname(os.path.abspath(cfg["out"])), exist_ok=True)
     if cfg["mode"] == "base":
         build_base(cfg, samples, sounds_dir)
     else:
-        build_scratch(cfg, samples, sounds_dir, project_tars, kits)
+        build_scratch(cfg, samples, sounds_dir, project_tars, kits, ep40)
     return {
         "out": cfg["out"],
         "project": cfg["project"],

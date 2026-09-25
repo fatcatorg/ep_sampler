@@ -17,7 +17,7 @@ sample library (1..220 for the EP-1320). Some sounds are reused, which is fine.
 
 from pathlib import Path
 
-from .pad_record import build_pad_record
+from .pad_record import build_pad_record, build_pad_record_ep40
 from .pak import _wav_frames, build_project_tar
 
 # {device: [ {name, A: [12 slots], B: [...], C: [...], D: [...]}, ... ]}
@@ -68,18 +68,21 @@ def has_factory_programmes(device: str) -> bool:
     return device in FACTORY_PROGRAMMES
 
 
-def build_factory_projects(device: str, samples: list, sounds_dir: Path) -> dict[str, bytes]:
+def build_factory_projects(device: str, samples: list, sounds_dir: Path,
+                           ep40: bool = False) -> dict[str, bytes]:
     """Build one project TAR per hand-assigned programme for `device`.
 
     `samples` are the factory `Sample` objects (already converted into
     `sounds_dir`); frame lengths are read from the converted WAVs so the pad
-    records carry the correct lengths.
+    records carry the correct lengths. `ep40` switches the pad records and
+    blank pads to the EP-40's 29-byte format.
     """
     programmes = FACTORY_PROGRAMMES.get(device)
     if not programmes:
         return {}
 
     by_slot = {s.slot: s for s in samples}
+    builder = build_pad_record_ep40 if ep40 else build_pad_record
     projects: dict[str, bytes] = {}
     for i, prog in enumerate(programmes, 1):
         records: dict[tuple[str, int], bytes] = {}
@@ -87,6 +90,6 @@ def build_factory_projects(device: str, samples: list, sounds_dir: Path) -> dict
             for pad, slot in enumerate(prog[group.upper()], 1):
                 sample = by_slot[slot]
                 frames = _wav_frames(sounds_dir / sample.wav_name)
-                records[(group, pad)] = build_pad_record(slot, frames)
-        projects[f"P{i:02d}.tar"] = build_project_tar(records)
+                records[(group, pad)] = builder(slot, frames)
+        projects[f"P{i:02d}.tar"] = build_project_tar(records, ep40)
     return projects

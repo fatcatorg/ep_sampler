@@ -198,10 +198,13 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
     cfg["device_sku"] = target["device_sku"]
     cfg["base_sku"] = target.get("base_sku", "")
     cfg["device_version"] = target.get("device_version", cfg["device_version"])
-    cfg["pak_type"] = meta.get("pak_type", cfg["pak_type"])
-    cfg["pak_release"] = meta.get("pak_release", cfg["pak_release"])
+    cfg["pak_type"] = target.get("pak_type", meta.get("pak_type", cfg["pak_type"]))
+    cfg["pak_release"] = target.get("pak_release", meta.get("pak_release", cfg["pak_release"]))
     _merge(cfg, args, "out_dir", "project", "device_version", "audio_tool",
            "ffmpeg_bin", "sox_bin")
+
+    # The EP-40 (TE032AS006) uses 29-byte pad records (see docs/ep40-format.md).
+    ep40 = target.get("device_sku") == "TE032AS006"
 
     print(f"building {meta['device_name']} factory pack "
           f"for {cfg['device_name']} ...")
@@ -250,7 +253,7 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
         return 1
 
     if not projects and has_factory_programmes(device):
-        projects = build_factory_projects(device, samples, sounds_dir)
+        projects = build_factory_projects(device, samples, sounds_dir, ep40)
         print(f"  assigning {len(projects)} factory programmes "
               f"(hand-assigned pads - real factory projects not bundled yet)")
 
@@ -259,7 +262,8 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
     cfg["out"] = str(out)
     cfg["mode"] = "scratch"
 
-    summary = build(cfg, samples, sounds_dir, project_tars=projects or None)
+    summary = build(cfg, samples, sounds_dir, project_tars=projects or None,
+                    ep40=ep40)
     print(f"built {summary['out']}")
     print(f"  device {cfg['device_name']}  factory {meta['device_name']}  "
           f"project P{summary['project']:02d}  samples {summary['samples']}")

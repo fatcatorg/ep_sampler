@@ -4,7 +4,7 @@ sample slot to a physical pad, with per-pad BPM / time-mode / play mode.
 
 Format is community reverse-engineering (see README). A pad record is 26 bytes:
 
-    offset 1      sample slot (u8, 0 = no sample)
+    offset 1..2   sample slot (u16 LE, 0 = no sample)
     offset 8..11  sample length in frames (u32 LE)
     offset 12..15 BPM float32 LE (default 120.0), or override encoding at 13..15
     offset 16     volume (u8, 100)
@@ -12,6 +12,10 @@ Format is community reverse-engineering (see README). A pad record is 26 bytes:
     offset 21     time.mode (0 off, 1 bpm, 2 bar)
     offset 23     playmode (0 oneshot, 1 key, 2 legato)
     offset 24     root note (u8, 60)
+
+EP-40 (TE032AS006) records are 29 bytes: the same 26-byte layout plus a
+3-byte tail (bytes 26..28) whose meaning isn't fully decoded yet (see
+docs/ep40-format.md).
 """
 
 import struct
@@ -32,6 +36,11 @@ DEFAULT_BLANK_PAD = bytes([
 ])
 assert len(DEFAULT_BLANK_PAD) == PAD_RECORD_SIZE
 
+# EP-40 pad record: same 26-byte layout + 3-byte tail, emitted as zeroes.
+PAD_RECORD_SIZE_EP40 = 29
+DEFAULT_BLANK_PAD_EP40 = DEFAULT_BLANK_PAD + b"\x00\x00\x00"
+assert len(DEFAULT_BLANK_PAD_EP40) == PAD_RECORD_SIZE_EP40
+
 PLAYMODES = {"oneshot": 0, "key": 1, "legato": 2}
 TIME_MODES = {"off": 0, "bpm": 1, "bar": 2}
 # playmode must be written together with a matched envelope.release.
@@ -42,7 +51,7 @@ def build_pad_record(slot, length_frames, bpm=None, bpm_override=False,
                      time_mode="off", playmode="oneshot"):
     """Return the 26-byte record for one pad bound to `slot`."""
     rec = bytearray(DEFAULT_BLANK_PAD)
-    rec[1] = slot & 0xFF
+    struct.pack_into("<H", rec, 1, slot & 0xFFFF)
     rec[8:12] = struct.pack("<I", length_frames)
 
     if bpm is not None:
@@ -63,3 +72,14 @@ def build_pad_record(slot, length_frames, bpm=None, bpm_override=False,
     rec[23] = PLAYMODES.get(playmode, 0)
     rec[20] = RELEASE_BY_PLAYMODE.get(playmode, 255)
     return bytes(rec)
+
+
+def build_pad_record_ep40(slot, length_frames, bpm=None, bpm_override=False,
+                          time_mode="off", playmode="oneshot"):
+    """Return the 29-byte EP-40 record for one pad bound to `slot`.
+
+    Bytes 0..25 are the verified EP-133 layout; bytes 26..28 are the EP-40
+    tail, emitted as zeroes (see docs/ep40-format.md).
+    """
+    return build_pad_record(slot, length_frames, bpm, bpm_override,
+                            time_mode, playmode) + b"\x00\x00\x00"

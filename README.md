@@ -354,6 +354,10 @@ fails with `ERR SYSTEM_MODEL`.
   (its `PROTOCOL.md` is the reference), building on `phones24`'s parser,
   `ep133-krate` and `garrettjwilke`'s SysEx work. Not affiliated with Teenage
   Engineering.
+- The EP-40 (TE032AS006) uses **29-byte** pad records, not the EP-133's
+  26-byte form. `build-factory … --as ep40` emits the EP-40-sized records, but
+  the 3-byte pad tail is still unverified — see `docs/ep40-format.md` for the
+  full reverse-engineering notes and test on hardware.
 - The factory sample lists (`ep_sampler/data/*.txt`) are name/slot lists only —
   no audio is bundled. Sources: [`codejunkee1/ep133-sounds`](https://github.com/codejunkee1/ep133-sounds)
   (EP-133) and [`jpopesculian/ep1320`](https://github.com/jpopesculian/ep1320)

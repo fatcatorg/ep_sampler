@@ -689,7 +689,7 @@ def cmd_menu(args: argparse.Namespace) -> int:
                 styles = _prompt_fx_styles()
             fx = ",".join(str(s + 1) for s in styles) if styles else None
             ns = argparse.Namespace(
-                config=args.config, name=None, randomize=(rnd == "y"),
+                config=args.config, name=None, randomise=(rnd == "y"),
                 fx=fx, seed=None, samples=False, out=None, list_fx=False)
             return cmd_ting(ns)
 
@@ -774,7 +774,7 @@ def cmd_ting(args: argparse.Namespace) -> int:
     name = args.name or "TING PACK"
 
     styles = _parse_fx_styles(args.fx) if args.fx else []
-    typed = bool(styles) or args.randomize
+    typed = bool(styles) or args.randomise
     if typed:
         data = typed_config(name, styles=styles, seed=args.seed)
     else:
@@ -783,7 +783,11 @@ def cmd_ting(args: argparse.Namespace) -> int:
         data["samples"] = sample_entries()
 
     write_config(data, out)
+    stamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+    archive = out.with_name(f"{out.name}.{stamp}")
+    write_config(data, archive)
     print(f"built {out}")
+    print(f"  also saved {archive}")
     print(f"  presets {len(data['presets'])} "
           f"({'fx-types' if typed else 'factory-style'})")
     if "samples" in data:
@@ -925,7 +929,8 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("--fx", default=None, metavar="1,2,3,4",
                    help="FX styles 1-8 to use (comma-separated); remaining "
                         "slots are filled with random styles")
-    t.add_argument("--randomize", action="store_true",
+    t.add_argument("--randomise", "--randomize", dest="randomise",
+                   action="store_true",
                    help="pick 4 random FX styles (or use --fx to choose)")
     t.add_argument("--list-fx", action="store_true",
                    help="list the 8 FX styles and exit")

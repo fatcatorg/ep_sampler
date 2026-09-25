@@ -58,7 +58,7 @@ ep-sampler build-factory ep1320
 **3. Generate FX presets for the Ting microphone:**
 
 ```bash
-ep-sampler ting --randomize
+ep-sampler ting --randomise
 ```
 
 ## Interactive menu
@@ -308,7 +308,7 @@ optional handle / shake / lfo / trigger modulation.
 
 ```bash
 ep-sampler ting                       # factory-style presets (ECHO/SPRING/PIXIE/ROBOT)
-ep-sampler ting --randomize           # 4 random FX styles
+ep-sampler ting --randomise          # 4 random FX styles
 ep-sampler ting --fx 1,3,5,7          # pick specific styles, rest filled randomly
 ep-sampler ting --samples             # include a samples section (1.wav..4.wav)
 ep-sampler ting --list-fx             # list the styles
@@ -331,8 +331,9 @@ but each pack is different:
 | 7 | RADIO | broken radio — bandpassed lo-fi static |
 | 8 | GLITCH | glitch / stutter — atonal chaos |
 
-Output goes to `out/ting/config.json` (override with `--out`); copy it onto the
-`tingdisk` volume and restart the mic.
+Output goes to `out/ting/config.json` (override with `--out`), plus a
+timestamped `config.json.<timestamp>` copy so every pack is kept; copy the main
+file onto the `tingdisk` volume and restart the mic.
 
 ## Build modes
 

@@ -17,6 +17,7 @@ import os
 import random
 import re
 import shutil
+import subprocess
 import sys
 import zipfile
 from datetime import datetime
@@ -133,7 +134,8 @@ def cmd_build(args: argparse.Namespace) -> int:
 
     samples = parse_manifest(manifest_path, samples_dir)
 
-    if not _convert_samples(samples, sounds_dir, cfg):
+    if _convert_samples(samples, sounds_dir, cfg):
+        print("aborting: some samples could not be converted", file=sys.stderr)
         return 1
 
     out_name = _expand_pak_name(cfg["pak_file_name"], cfg)
@@ -148,26 +150,38 @@ def cmd_build(args: argparse.Namespace) -> int:
     return 0
 
 
-def _convert_samples(samples: list[Sample], sounds_dir: Path, cfg: dict) -> bool:
-    """Convert each sample to the .pak format. Returns False on any error."""
+def _convert_samples(samples: list[Sample], sounds_dir: Path,
+                     cfg: dict) -> list[Sample]:
+    """Convert each sample to the .pak format.
+
+    Returns the list of samples that could not be converted (missing file or
+    converter failure). An empty list means every sample converted.
+    """
     tool = cfg["audio_tool"]
     if tool == "sox":
         extra = cfg.get("sox_extra_args") or []
     else:
         extra = cfg.get("ffmpeg_extra_args") or []
     total = len(samples)
+    failed: list[Sample] = []
     for i, s in enumerate(samples, 1):
         if not s.src.is_file():
             print(f"sample file not found: {s.src} (slot {s.slot})",
                   file=sys.stderr)
-            return False
+            failed.append(s)
+            continue
         dst = sounds_dir / s.wav_name
-        if _needs_conversion(s.src, dst):
-            print(f"  [{i}/{total}] converting {s.src.name} -> {s.wav_name}")
+        if not _needs_conversion(s.src, dst):
+            continue
+        print(f"  [{i}/{total}] converting {s.src.name} -> {s.wav_name}")
+        try:
             convert_wav(s.src, dst, tool=tool,
                         ffmpeg_bin=cfg["ffmpeg_bin"], sox_bin=cfg["sox_bin"],
                         extra_args=extra)
-    return True
+        except (subprocess.CalledProcessError, OSError) as exc:
+            print(f"conversion failed: {s.src} ({exc})", file=sys.stderr)
+            failed.append(s)
+    return failed
 
 
 def _needs_conversion(src: Path, dst: Path) -> bool:
@@ -251,7 +265,8 @@ def cmd_build_factory(args: argparse.Namespace) -> int:
     samples = [Sample(slot=s.slot, name=s.name, src=path)
                for s, path in found]
 
-    if not _convert_samples(samples, sounds_dir, cfg):
+    if _convert_samples(samples, sounds_dir, cfg):
+        print("aborting: some samples could not be converted", file=sys.stderr)
         return 1
 
     if not projects and has_factory_programmes(device):
@@ -512,8 +527,14 @@ def _write_manifest(path: Path, rows: list[dict], guide: str, seed: int) -> None
                                 "playmode", "name", "file")) + "\n")
 
 
-def _build_kits_pak(cfg: dict, kits: list[list[dict]]) -> int:
-    """Convert every kit's samples and build one .pak with a project per kit."""
+def _build_kits_pak(cfg: dict, kits: list[list[dict]],
+                    library: list | None = None) -> int:
+    """Convert every kit's samples and build one .pak with a project per kit.
+
+    When `library` (the scanned sample records) is given, samples that can't be
+    found or converted are swapped for alternates from the library and the
+    build is retried, up to 5 times.
+    """
     samples_dir = Path(cfg["samples_dir"]).expanduser()
     all_samples: list[Sample] = []
     kit_samples: list[list[Sample]] = []
@@ -526,18 +547,37 @@ def _build_kits_pak(cfg: dict, kits: list[list[dict]]) -> int:
                 src = samples_dir / src
             bpm = r.get("bpm")
             bpm = float(bpm) if bpm not in (None, "", "-") else None
-            cur.append(Sample(slot=slot, group=r["group"].lower(),
-                              pad=r["pad"], bpm=bpm,
-                              time_mode=r.get("time_mode", "off"),
-                              playmode=r.get("playmode", "oneshot"),
-                              name=r["name"], src=src))
-            all_samples.append(cur[-1])
+            sample = Sample(slot=slot, group=r["group"].lower(),
+                            pad=r["pad"], bpm=bpm,
+                            time_mode=r.get("time_mode", "off"),
+                            playmode=r.get("playmode", "oneshot"),
+                            name=r["name"], src=src)
+            sample.category = r.get("category", "fx")
+            cur.append(sample)
+            all_samples.append(sample)
             slot += 1
         kit_samples.append(cur)
 
     out_dir = Path(cfg["out_dir"]).expanduser()
     sounds_dir = out_dir / cfg["build_dir"] / "sounds"
-    if not _convert_samples(all_samples, sounds_dir, cfg):
+
+    alternates = _library_alternates(library, samples_dir) if library else []
+
+    for attempt in range(5):
+        failed = _convert_samples(all_samples, sounds_dir, cfg)
+        if not failed:
+            break
+        if not alternates:
+            print("  no valid alternates in the library - cannot recover",
+                  file=sys.stderr)
+            return 1
+        print(f"  {len(failed)} sample(s) unavailable - substituting "
+              f"(attempt {attempt + 1})")
+        if not _substitute(all_samples, failed, alternates):
+            print("  ran out of alternates", file=sys.stderr)
+            return 1
+    else:
+        print("  giving up after 5 attempts", file=sys.stderr)
         return 1
 
     cfg["out"] = str(out_dir / _expand_pak_name(cfg["pak_file_name"], cfg))
@@ -549,6 +589,51 @@ def _build_kits_pak(cfg: dict, kits: list[list[dict]]) -> int:
     print(f"  programmes {len(kit_samples)}  samples {len(all_samples)}")
     _cleanup_build_dir(sounds_dir)
     return 0
+
+
+def _library_alternates(library: list, samples_dir: Path) -> list:
+    """Return (record, resolved_path) for library entries whose file exists."""
+    out = []
+    for rec in library:
+        path = Path(rec.file)
+        if not path.is_absolute():
+            path = samples_dir / path
+        if path.is_file():
+            out.append((rec, path))
+    return out
+
+
+def _substitute(all_samples: list[Sample], failed: list[Sample],
+                alternates: list) -> bool:
+    """Swap failed samples for alternates, in place.
+
+    Prefers alternates in the same category; falls back to any not-yet-used
+    file. Returns False if a failed sample had no alternate left.
+    """
+    rng = random.Random()
+    by_cat: dict[str, list] = {}
+    for rec, path in alternates:
+        by_cat.setdefault(getattr(rec, "category", "fx"), []).append((rec, path))
+    used = {str(s.src) for s in all_samples}
+    for s in failed:
+        pool = [p for p in by_cat.get(getattr(s, "category", None), [])
+                if str(p[1]) not in used]
+        if not pool:
+            pool = [p for p in alternates if str(p[1]) not in used]
+        if not pool:
+            return False
+        rec, path = rng.choice(pool)
+        s.src = path
+        s.name = ((getattr(rec, "name", "") or Path(rec.file).stem)[:20]
+                  or "sample")
+        bpm = getattr(rec, "bpm", None)
+        s.bpm = float(bpm) if bpm else None
+        s.time_mode = "bpm" if bpm else "off"
+        s.category = getattr(rec, "category", "fx")
+        s.playmode = ("key" if s.category in ("bass", "chord", "melody")
+                      else "oneshot")
+        used.add(str(path))
+    return True
 
 
 def cmd_manifest(args: argparse.Namespace) -> int:
@@ -621,7 +706,7 @@ def cmd_manifest(args: argparse.Namespace) -> int:
     print("  " + ", ".join(f"group {g}:{n}" for g, n in sorted(groups.items())))
 
     if num > 1:
-        return _build_kits_pak(cfg, kits)
+        return _build_kits_pak(cfg, kits, library=samples)
     return 0
 
 

@@ -346,7 +346,7 @@ def build_manifest(samples: list[SampleRec], guide_key: str,
                 "bpm": bpm,
                 "time_mode": "bpm" if bpm else "off",
                 "playmode": PLAYMODE_OF.get(c, "oneshot"),
-                "name": s.name, "file": s.file,
+                "name": s.name, "file": s.file, "category": c,
             })
     return rows
 

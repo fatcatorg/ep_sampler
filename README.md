@@ -277,6 +277,25 @@ projects — pad assignments, patterns, scenes and FX settings — so the result
 a full factory restore. Devices without bundled project data (EP-133 / EP-1320)
 fall back to a blank project.
 
+### Re-tagging a factory pak (preferred)
+
+The closest way to put a device back to factory — even a different model — is
+to start from a **real factory-content pak** and `retag` it, rather than build
+one from scratch. `retag` rewrites the pak's device identity in `meta.json`
+(`device_name`, `device_sku`, `base_sku`, `device_version`) and copies every
+other entry byte-for-byte, so a factory pak built for one device loads on
+another:
+
+```bash
+ep-sampler retag /path/to/factory-content.pak --as ep40
+```
+
+Output defaults to `<name>-<device>.pak` (override with `--out`). `--pak-type`
+and `--pak-release` override the metadata fields rather than keeping the
+source's values. This does **not** convert the samples or project data — it
+only changes which device the pak claims to be, so use it between devices
+whose slot layout you know to be compatible.
+
 ## Ting (EP-2350 FX mic)
 
 The Ting is a handheld FX microphone, not a sampler. It mounts a tiny disk and
@@ -323,22 +342,6 @@ Output goes to `out/ting/config.json` (override with `--out`); copy it onto the
 
 Either way, check free space on the device first — a restore that doesn't fit
 fails with `ERR SYSTEM_MODEL`.
-
-## Re-tagging a .pak for another device
-
-`retag` rewrites an existing `.pak`'s device identity in `meta.json`
-(`device_name`, `device_sku`, `base_sku`, `device_version`) and copies every
-other entry byte-for-byte, so content built for one device loads on another:
-
-```bash
-ep-sampler retag /path/to/content.pak --as ep40
-```
-
-Output defaults to `<name>-<device>.pak` (override with `--out`). `--pak-type`
-and `--pak-release` override the metadata fields rather than keeping the
-source's values. This does **not** convert the samples or project data — it
-only changes which device the pak claims to be, so use it between devices
-whose slot layout you know to be compatible.
 
 ## Notes
 
